@@ -8,10 +8,8 @@ const TelegramBot = require('node-telegram-bot-api');
 // Токен бота (получен от BotFather)
 const BOT_TOKEN = '8486427372:AAEDwcPL0pt3WCAc8JT1JwY-TKZqn3ZsbLM';
 
-// URL Mini App (замените на ваш URL когда запустите frontend)
-// Для локального тестирования используйте ngrok
-// Временно используем Google для демонстрации работы кнопки
-const MINI_APP_URL = 'https://google.com'; // TODO: Заменить на реальный URL вашего приложения
+// URL Mini App - задеплоенное приложение на Vercel
+const MINI_APP_URL = 'https://frontend-kxf40vqbb-nikitas-projects-1742d776.vercel.app';
 
 // Создаём бота
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
