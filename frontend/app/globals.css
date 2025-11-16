@@ -75,6 +75,25 @@ html, body {
   overscroll-behavior: none;
 }
 
+/* Performance optimization */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  scroll-behavior: auto; /* Instant scroll, no smooth animation */
+  overflow-y: scroll; /* Always show scrollbar to prevent layout shift */
+}
+
+body {
+  overflow-x: hidden;
+}
+
+button {
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
 /* ============================================ */
 /* Градиентные кнопки */
 /* ============================================ */
@@ -195,23 +214,16 @@ html, body {
       var(--color-5) var(--stop-5)
     );
     transition:
-      --pos-x 0.5s,
-      --pos-y 0.5s,
-      --spread-x 0.5s,
-      --spread-y 0.5s,
-      --color-1 0.5s,
-      --color-2 0.5s,
-      --color-3 0.5s,
-      --color-4 0.5s,
-      --color-5 0.5s,
-      --border-angle 0.5s,
-      --border-color-1 0.5s,
-      --border-color-2 0.5s,
-      --stop-1 0.5s,
-      --stop-2 0.5s,
-      --stop-3 0.5s,
-      --stop-4 0.5s,
-      --stop-5 0.5s;
+      --pos-x 0.3s ease-out,
+      --pos-y 0.3s ease-out,
+      --spread-x 0.3s ease-out,
+      --spread-y 0.3s ease-out,
+      --color-1 0.3s ease-out,
+      --color-2 0.3s ease-out,
+      --color-3 0.3s ease-out,
+      --color-4 0.3s ease-out,
+      --color-5 0.3s ease-out;
+    will-change: background;
   }
 
   .gradient-button::before {
