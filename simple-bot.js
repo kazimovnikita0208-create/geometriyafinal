@@ -9,7 +9,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const BOT_TOKEN = '8486427372:AAEDwcPL0pt3WCAc8JT1JwY-TKZqn3ZsbLM';
 
 // URL Mini App - задеплоенное приложение на Vercel
-const MINI_APP_URL = 'https://frontend-kxf40vqbb-nikitas-projects-1742d776.vercel.app';
+const MINI_APP_URL = 'https://frontend-phi-mocha-55.vercel.app';
 
 // Создаём бота
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
