@@ -1,0 +1,62 @@
+# Зависимости
+node_modules/
+**/node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# База данных
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Environment переменные
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Логи
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+pnpm-debug.log*
+
+# Next.js
+.next/
+out/
+build/
+dist/
+.vercel
+
+# Testing
+coverage/
+.nyc_output
+
+# Misc
+.DS_Store
+*.pem
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Production
+.cache/
+.parcel-cache/
+
+# Backup files
+*.backup
+*.bak
+

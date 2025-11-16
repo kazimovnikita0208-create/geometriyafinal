@@ -1,0 +1,17 @@
+{
+  "name": "geometriya-simple-bot",
+  "version": "1.0.0",
+  "description": "Простой Telegram-бот для студии Геометрия",
+  "main": "simple-bot.js",
+  "scripts": {
+    "start": "node simple-bot.js",
+    "bot": "node simple-bot.js"
+  },
+  "keywords": ["telegram", "bot", "geometriya"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "node-telegram-bot-api": "^0.64.0"
+  }
+}
+
