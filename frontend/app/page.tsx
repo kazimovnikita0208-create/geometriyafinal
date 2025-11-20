@@ -7,25 +7,25 @@ import { Button } from '@/components/ui/button'
 
 // Вынесли иконки наружу - создаются один раз
 const CalendarIcon = () => (
-  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
   </svg>
 )
 
 const BoltIcon = () => (
-  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
   </svg>
 )
 
 const DollarIcon = () => (
-  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
   </svg>
 )
 
 const UserIcon = () => (
-  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
   </svg>
 )
@@ -41,13 +41,13 @@ const MENU_ITEMS = [
   {
     Icon: BoltIcon,
     title: 'О направлениях',
-    description: 'Pole Dance, Растяжка',
+    description: 'Наши программы',
     path: '/directions',
   },
   {
     Icon: DollarIcon,
-    title: 'Цены',
-    description: 'Абонементы',
+    title: 'Абонемент',
+    description: 'Выбрать тариф',
     path: '/prices',
   },
   {
@@ -85,32 +85,32 @@ export default function Home() {
       <main className="min-h-screen relative flex flex-col">
         
         {/* Hero Section - Responsive для всех устройств */}
-        <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-8 sm:py-12">
+        <div className="flex-1 flex items-center justify-center px-3 sm:px-6 py-4 sm:py-12">
           <div className="max-w-4xl w-full">
             
             {/* Main Content */}
-            <div className="text-center space-y-6">
+            <div className="text-center space-y-4 sm:space-y-6">
               
               {/* Logo Area */}
-              <div className="relative w-full flex flex-col items-center space-y-6">
+              <div className="relative w-full flex flex-col items-center space-y-3 sm:space-y-6">
                 {/* Сам логотип - адаптивный размер */}
                 <img 
                   src="/logo.svg" 
                   alt="Геометрия" 
-                  className="w-24 h-24 sm:w-32 sm:h-32 object-contain"
+                  className="w-20 h-20 sm:w-32 sm:h-32 object-contain"
                   style={{
                     filter: 'brightness(0) invert(1)'
                   }}
                 />
 
                 {/* Subtitle - адаптивный размер */}
-                <p className="text-base sm:text-lg text-purple-200 font-light tracking-wide">
-                  Студия танцев и растяжки
+                <p className="text-sm sm:text-lg text-purple-200 font-light tracking-wide">
+                  Студия танцев и фитнеса на пилоне
                 </p>
               </div>
 
               {/* Menu Grid - Responsive: 1 колонка на мобильных, 2 на больших экранах */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mt-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4 mt-6 sm:mt-8">
                 {MENU_ITEMS.map((item) => {
                   const Icon = item.Icon
                   return (
@@ -118,20 +118,20 @@ export default function Home() {
                       key={item.path}
                       onClick={() => handleNavigate(item.path)}
                       variant="secondary"
-                      className="h-auto min-h-[100px] sm:min-h-[140px] rounded-xl w-full"
+                      className="h-auto min-h-[90px] sm:min-h-[140px] rounded-lg sm:rounded-xl w-full"
                     >
-                      <div className="flex flex-col items-center justify-center text-center p-4 sm:p-6 w-full">
+                      <div className="flex flex-col items-center justify-center text-center p-3 sm:p-6 w-full">
                         {/* Icon - сверху */}
-                        <div className="text-white mb-3">
+                        <div className="text-white mb-2 sm:mb-3">
                           <Icon />
                         </div>
                         
                         {/* Content - снизу */}
                         <div>
-                          <h3 className="text-base sm:text-lg font-bold text-white mb-1">
+                          <h3 className="text-sm sm:text-lg font-bold text-white mb-0.5 sm:mb-1">
                             {item.title}
                           </h3>
-                          <p className="text-xs sm:text-sm text-white/70">
+                          <p className="text-xs text-white/70">
                             {item.description}
                           </p>
                         </div>
@@ -159,15 +159,15 @@ export default function Home() {
                 <span>+7 (XXX) XXX-XX-XX</span>
               </a>
               <a 
-                href="https://instagram.com/geometriya_dance" 
+                href="https://vk.com/geometria163" 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 className="hover:text-purple-300 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                  <path d="M15.684 0H8.316C1.592 0 0 1.592 0 8.316v7.368C0 22.408 1.592 24 8.316 24h7.368C22.408 24 24 22.408 24 15.684V8.316C24 1.592 22.391 0 15.684 0zm3.692 17.123h-1.744c-.66 0-.864-.525-2.05-1.727-1.033-1-1.49-1.135-1.744-1.135-.356 0-.458.102-.458.593v1.575c0 .424-.135.678-1.253.678-1.846 0-3.896-1.118-5.335-3.202C4.624 10.857 4.03 8.57 4.03 8.096c0-.254.102-.491.593-.491h1.744c.441 0 .61.203.78.678.863 2.49 2.303 4.675 2.896 4.675.22 0 .322-.102.322-.66V9.721c-.068-1.186-.695-1.287-.695-1.711 0-.203.17-.407.44-.407h2.744c.373 0 .508.203.508.643v3.473c0 .372.17.508.271.508.22 0 .407-.136.813-.542 1.254-1.406 2.151-3.574 2.151-3.574.119-.254.322-.491.763-.491h1.744c.525 0 .644.27.525.643-.22 1.017-2.354 4.031-2.354 4.031-.186.305-.254.44 0 .78.186.254.796.78 1.203 1.253.745.847 1.32 1.558 1.473 2.05.17.49-.085.744-.576.744z"/>
                 </svg>
-                <span>@geometriya_dance</span>
+                <span>geometria163</span>
               </a>
             </div>
           </div>

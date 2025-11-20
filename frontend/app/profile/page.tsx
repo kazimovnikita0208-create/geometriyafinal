@@ -46,7 +46,7 @@ const XIcon = () => (
 const mockUpcomingLessons = [
   {
     id: 1,
-    title: 'Pole Dance',
+    title: 'Pole Fit',
     date: 'Понедельник, 18 ноября',
     time: '18:00 - 19:30',
     instructor: 'Анна Иванова',
@@ -84,27 +84,27 @@ export default function ProfilePage() {
         
         {/* Header */}
         <div className="sticky top-0 z-20 bg-black/40 backdrop-blur-xl border-b border-purple-500/20">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4">
-            <div className="flex items-center gap-4">
+          <div className="max-w-5xl mx-auto px-3 sm:px-6 py-3 sm:py-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => router.back()}
-                className="gap-2"
+                className="gap-1 sm:gap-2 px-2 sm:px-3"
               >
                 <ChevronLeftIcon />
-                <span>Назад</span>
+                <span className="hidden sm:inline">Назад</span>
               </Button>
-              <div className="flex-1 flex items-center gap-3">
+              <div className="flex-1 flex items-center gap-2 sm:gap-3">
                 {/* Аватар */}
-                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-purple-600 to-purple-800 flex items-center justify-center text-white text-xl sm:text-2xl font-bold border-2 border-purple-400/30">
+                <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-purple-600 to-purple-800 flex items-center justify-center text-white text-lg sm:text-2xl font-bold border-2 border-purple-400/30 flex-shrink-0">
                   {userName.charAt(0).toUpperCase()}
                 </div>
-                <div>
-                  <h1 className="text-lg sm:text-xl font-bold text-white">
+                <div className="min-w-0">
+                  <h1 className="text-sm sm:text-xl font-bold text-white truncate">
                     {userName}
                   </h1>
-                  <p className="text-xs sm:text-sm text-purple-200/70">
+                  <p className="text-xs text-purple-200/70">
                     Личный кабинет
                   </p>
                 </div>
@@ -114,28 +114,29 @@ export default function ProfilePage() {
         </div>
 
         {/* Content */}
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <div className="max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
           
           {/* Абонемент */}
-          <div className="bg-purple-900/40 backdrop-blur-xl rounded-2xl border border-purple-500/20 p-4 sm:p-6 md:p-8 mb-6">
-            <h2 className="text-lg sm:text-xl font-bold text-white mb-6 flex items-center gap-2">
+          <div className="bg-purple-900/40 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-purple-500/20 p-4 sm:p-6 md:p-8 mb-4 sm:mb-6">
+            <h2 className="text-base sm:text-xl font-bold text-white mb-4 sm:mb-6 flex items-center gap-2">
               <TicketIcon />
               Мой абонемент
             </h2>
             
             {/* Пустое состояние - нет абонемента */}
-            <div className="text-center py-8">
-              <div className="w-16 sm:w-20 h-16 sm:h-20 mx-auto mb-4 rounded-full bg-purple-500/20 flex items-center justify-center">
+            <div className="text-center py-6 sm:py-8">
+              <div className="w-14 sm:w-20 h-14 sm:h-20 mx-auto mb-3 sm:mb-4 rounded-full bg-purple-500/20 flex items-center justify-center">
                 <TicketIcon />
               </div>
-              <h3 className="text-base sm:text-lg font-semibold text-white mb-2">
+              <h3 className="text-sm sm:text-lg font-semibold text-white mb-2">
                 Абонемент не активен
               </h3>
-              <p className="text-sm sm:text-base text-purple-200/70 mb-6 max-w-md mx-auto">
+              <p className="text-xs sm:text-base text-purple-200/70 mb-4 sm:mb-6 max-w-md mx-auto px-4">
                 Купите абонемент, чтобы начать заниматься в нашей студии
               </p>
               <Button
                 variant="default"
+                className="text-sm sm:text-base py-2.5 sm:py-3"
                 onClick={() => router.push('/prices')}
               >
                 Посмотреть цены
@@ -165,15 +166,16 @@ export default function ProfilePage() {
           </div>
 
           {/* Мои занятия */}
-          <div className="bg-purple-900/40 backdrop-blur-xl rounded-2xl border border-purple-500/20 p-4 sm:p-6 md:p-8 mb-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+          <div className="bg-purple-900/40 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-purple-500/20 p-4 sm:p-6 md:p-8 mb-4 sm:mb-6">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <h2 className="text-base sm:text-xl font-bold text-white flex items-center gap-2">
                 <CalendarIcon />
                 Мои занятия
               </h2>
               <Button
                 variant="outline"
                 size="sm"
+                className="text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3"
                 onClick={() => router.push('/schedule')}
               >
                 Записаться
@@ -182,18 +184,18 @@ export default function ProfilePage() {
             
             {/* Список занятий */}
             {mockUpcomingLessons.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {mockUpcomingLessons.map((lesson) => (
                   <div
                     key={lesson.id}
-                    className="bg-black/30 rounded-xl p-4 border border-purple-500/20 hover:border-purple-400/40 transition-colors"
+                    className="bg-black/30 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-purple-500/20 hover:border-purple-400/40 transition-colors"
                   >
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h3 className="text-lg font-semibold text-white mb-1">
+                    <div className="flex items-start justify-between mb-2 sm:mb-3">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-sm sm:text-lg font-semibold text-white mb-1 truncate">
                           {lesson.title}
                         </h3>
-                        <div className="flex items-center gap-2 text-sm text-purple-200/70">
+                        <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-purple-200/70">
                           <ClockIcon />
                           <span>{lesson.date}</span>
                         </div>
@@ -201,20 +203,20 @@ export default function ProfilePage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-purple-300 hover:text-white"
+                        className="text-purple-300 hover:text-white flex-shrink-0 p-1 sm:p-2"
                       >
                         <XIcon />
                       </Button>
                     </div>
                     
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                      <div className="text-purple-200">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 text-xs sm:text-sm">
+                      <div className="text-purple-200 truncate">
                         <span className="text-purple-200/70">Время:</span> {lesson.time}
                       </div>
-                      <div className="text-purple-200">
+                      <div className="text-purple-200 truncate">
                         <span className="text-purple-200/70">Зал:</span> {lesson.hall}
                       </div>
-                      <div className="text-purple-200 sm:col-span-2">
+                      <div className="text-purple-200 sm:col-span-2 truncate">
                         <span className="text-purple-200/70">Инструктор:</span> {lesson.instructor}
                       </div>
                     </div>
@@ -222,15 +224,16 @@ export default function ProfilePage() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-500/20 flex items-center justify-center text-2xl">
+              <div className="text-center py-6 sm:py-8">
+                <div className="w-14 sm:w-16 h-14 sm:h-16 mx-auto mb-3 sm:mb-4 rounded-full bg-purple-500/20 flex items-center justify-center text-xl sm:text-2xl">
                   📝
                 </div>
-                <p className="text-purple-200/70 mb-4">
+                <p className="text-xs sm:text-base text-purple-200/70 mb-3 sm:mb-4 px-4">
                   У вас пока нет записей на занятия
                 </p>
                 <Button
                   variant="secondary"
+                  className="text-sm sm:text-base py-2.5 sm:py-3"
                   onClick={() => router.push('/schedule')}
                 >
                   Записаться на занятие
@@ -240,57 +243,57 @@ export default function ProfilePage() {
           </div>
 
           {/* Статистика */}
-          <div className="bg-purple-900/40 backdrop-blur-xl rounded-2xl border border-purple-500/20 p-4 sm:p-6 md:p-8 mb-6">
-            <h2 className="text-lg sm:text-xl font-bold text-white mb-6 flex items-center gap-2">
+          <div className="bg-purple-900/40 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-purple-500/20 p-4 sm:p-6 md:p-8 mb-4 sm:mb-6">
+            <h2 className="text-base sm:text-xl font-bold text-white mb-4 sm:mb-6 flex items-center gap-2">
               <ChartIcon />
               Статистика
             </h2>
             
-            <div className="grid grid-cols-3 gap-4 text-center">
+            <div className="grid grid-cols-3 gap-3 sm:gap-4 text-center">
               <div>
-                <div className="text-4xl font-bold text-white mb-2">12</div>
-                <div className="text-sm text-purple-200/70">Посещено</div>
+                <div className="text-2xl sm:text-4xl font-bold text-white mb-1 sm:mb-2">12</div>
+                <div className="text-xs sm:text-sm text-purple-200/70">Посещено</div>
               </div>
               <div>
-                <div className="text-4xl font-bold text-purple-300 mb-2">2</div>
-                <div className="text-sm text-purple-200/70">Запланировано</div>
+                <div className="text-2xl sm:text-4xl font-bold text-purple-300 mb-1 sm:mb-2">2</div>
+                <div className="text-xs sm:text-sm text-purple-200/70">Запланировано</div>
               </div>
               <div>
-                <div className="text-4xl font-bold text-purple-400 mb-2">8</div>
-                <div className="text-sm text-purple-200/70">Осталось</div>
+                <div className="text-2xl sm:text-4xl font-bold text-purple-400 mb-1 sm:mb-2">8</div>
+                <div className="text-xs sm:text-sm text-purple-200/70">Осталось</div>
               </div>
             </div>
           </div>
 
           {/* Настройки */}
-          <div className="bg-purple-900/40 backdrop-blur-xl rounded-2xl border border-purple-500/20 p-4 sm:p-6 md:p-8 mb-6">
-            <h2 className="text-lg sm:text-xl font-bold text-white mb-6">
+          <div className="bg-purple-900/40 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-purple-500/20 p-4 sm:p-6 md:p-8 mb-4 sm:mb-6">
+            <h2 className="text-base sm:text-xl font-bold text-white mb-4 sm:mb-6">
               Настройки
             </h2>
             
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {/* Уведомления */}
-              <div className="flex items-center justify-between py-3 border-b border-purple-500/20">
-                <div>
-                  <div className="text-white font-medium mb-1">Уведомления</div>
-                  <div className="text-sm text-purple-200/70">
+              <div className="flex items-center justify-between py-2 sm:py-3 border-b border-purple-500/20 gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm sm:text-base text-white font-medium mb-0.5 sm:mb-1">Уведомления</div>
+                  <div className="text-xs sm:text-sm text-purple-200/70">
                     Напоминания о занятиях и новости студии
                   </div>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+                <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
                   <input
                     type="checkbox"
                     className="sr-only peer"
                     checked={notifications}
                     onChange={(e) => setNotifications(e.target.checked)}
                   />
-                  <div className="w-11 h-6 bg-gray-700 rounded-full peer peer-focus:ring-2 peer-focus:ring-purple-400 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                  <div className="w-10 h-5 sm:w-11 sm:h-6 bg-gray-700 rounded-full peer peer-focus:ring-2 peer-focus:ring-purple-400 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 sm:after:h-5 sm:after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
                 </label>
               </div>
 
               {/* Контактные данные */}
-              <div className="pt-3">
-                <Button variant="outline" className="w-full sm:w-auto">
+              <div className="pt-2 sm:pt-3">
+                <Button variant="outline" className="w-full sm:w-auto text-sm sm:text-base py-2.5 sm:py-3">
                   Изменить контактные данные
                 </Button>
               </div>
@@ -298,15 +301,15 @@ export default function ProfilePage() {
           </div>
 
           {/* Контакты */}
-          <div className="text-center">
-            <div className="inline-block bg-purple-900/40 backdrop-blur-xl rounded-2xl border border-purple-500/20 px-8 py-6">
-              <p className="text-purple-200 mb-3">
+          <div className="text-center pb-4">
+            <div className="inline-block bg-purple-900/40 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-purple-500/20 px-4 sm:px-8 py-4 sm:py-6 w-full sm:w-auto">
+              <p className="text-xs sm:text-base text-purple-200 mb-2 sm:mb-3">
                 Есть вопросы? Свяжитесь с нами
               </p>
-              <div className="space-y-2">
+              <div className="space-y-1.5 sm:space-y-2">
                 <a
                   href="tel:+7XXXXXXXXXX"
-                  className="block text-lg font-semibold text-white hover:text-purple-300 transition-colors"
+                  className="block text-sm sm:text-lg font-semibold text-white hover:text-purple-300 transition-colors"
                 >
                   📞 +7 (XXX) XXX-XX-XX
                 </a>
@@ -314,7 +317,7 @@ export default function ProfilePage() {
                   href="https://instagram.com/geometriya_dance"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block text-lg font-semibold text-white hover:text-purple-300 transition-colors"
+                  className="block text-sm sm:text-lg font-semibold text-white hover:text-purple-300 transition-colors"
                 >
                   📸 @geometriya_dance
                 </a>
