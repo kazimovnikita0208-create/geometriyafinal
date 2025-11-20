@@ -425,41 +425,41 @@ export default function PricesPage() {
       {/* Модальное окно бронирования абонемента */}
       {isBookingModalOpen && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto"
           onClick={() => setIsBookingModalOpen(false)}
         >
           <div 
-            className="bg-purple-900/95 backdrop-blur-xl rounded-2xl border border-purple-500/30 max-w-md w-full shadow-2xl"
+            className="bg-purple-900/95 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-purple-500/30 max-w-md w-full shadow-2xl my-2 sm:my-0"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="bg-purple-900/95 backdrop-blur-xl border-b border-purple-500/30 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between rounded-t-2xl">
-              <h2 className="text-lg sm:text-xl font-bold text-white">
+            <div className="sticky top-0 bg-purple-900/95 backdrop-blur-xl border-b border-purple-500/30 px-3 sm:px-6 py-2.5 sm:py-4 flex items-center justify-between rounded-t-xl sm:rounded-t-2xl z-10">
+              <h2 className="text-base sm:text-xl font-bold text-white">
                 Бронирование абонемента
               </h2>
               <button
                 onClick={() => setIsBookingModalOpen(false)}
-                className="text-purple-200 hover:text-white transition-colors flex-shrink-0"
+                className="text-purple-200 hover:text-white transition-colors flex-shrink-0 p-1"
               >
                 <XIcon />
               </button>
             </div>
 
             {/* Content */}
-            <form onSubmit={handleBookingSubmit} className="p-4 sm:p-6 space-y-4">
+            <form onSubmit={handleBookingSubmit} className="p-3 sm:p-6 space-y-3 sm:space-y-4 max-h-[calc(100vh-120px)] sm:max-h-[calc(90vh-80px)] overflow-y-auto">
               {/* Выбранная категория */}
-              <div className="bg-purple-800/30 rounded-lg p-4 border border-purple-500/20">
-                <p className="text-sm text-purple-200/70 mb-1">Выбранный тариф:</p>
-                <p className="text-lg font-bold text-white">{selectedCategory}</p>
+              <div className="bg-purple-800/30 rounded-lg p-3 border border-purple-500/20">
+                <p className="text-xs sm:text-sm text-purple-200/70 mb-1">Выбранный тариф:</p>
+                <p className="text-base sm:text-lg font-bold text-white">{selectedCategory}</p>
               </div>
 
               {/* Имя */}
               <div>
-                <label htmlFor="firstName" className="block text-sm font-medium text-purple-200 mb-2">
+                <label htmlFor="firstName" className="block text-xs sm:text-sm font-medium text-purple-200 mb-1.5 sm:mb-2">
                   Имя <span className="text-red-400">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-purple-300">
+                  <div className="absolute inset-y-0 left-0 pl-2.5 sm:pl-3 flex items-center pointer-events-none text-purple-300">
                     <UserIcon />
                   </div>
                   <input
@@ -468,7 +468,7 @@ export default function PricesPage() {
                     required
                     value={formData.firstName}
                     onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                    className="w-full pl-10 pr-4 py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white placeholder-purple-300/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all"
+                    className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white placeholder-purple-300/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all text-sm sm:text-base"
                     placeholder="Введите ваше имя"
                   />
                 </div>
@@ -476,11 +476,11 @@ export default function PricesPage() {
 
               {/* Фамилия */}
               <div>
-                <label htmlFor="lastName" className="block text-sm font-medium text-purple-200 mb-2">
+                <label htmlFor="lastName" className="block text-xs sm:text-sm font-medium text-purple-200 mb-1.5 sm:mb-2">
                   Фамилия <span className="text-red-400">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-purple-300">
+                  <div className="absolute inset-y-0 left-0 pl-2.5 sm:pl-3 flex items-center pointer-events-none text-purple-300">
                     <UserIcon />
                   </div>
                   <input
@@ -489,7 +489,7 @@ export default function PricesPage() {
                     required
                     value={formData.lastName}
                     onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                    className="w-full pl-10 pr-4 py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white placeholder-purple-300/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all"
+                    className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white placeholder-purple-300/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all text-sm sm:text-base"
                     placeholder="Введите вашу фамилию"
                   />
                 </div>
@@ -497,11 +497,11 @@ export default function PricesPage() {
 
               {/* Номер телефона */}
               <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-purple-200 mb-2">
+                <label htmlFor="phone" className="block text-xs sm:text-sm font-medium text-purple-200 mb-1.5 sm:mb-2">
                   Номер телефона <span className="text-red-400">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-purple-300">
+                  <div className="absolute inset-y-0 left-0 pl-2.5 sm:pl-3 flex items-center pointer-events-none text-purple-300">
                     <PhoneIcon />
                   </div>
                   <input
@@ -510,7 +510,7 @@ export default function PricesPage() {
                     required
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full pl-10 pr-4 py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white placeholder-purple-300/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all"
+                    className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white placeholder-purple-300/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all text-sm sm:text-base"
                     placeholder="+7 (___) ___-__-__"
                   />
                 </div>
@@ -518,11 +518,11 @@ export default function PricesPage() {
 
               {/* Адрес студии */}
               <div>
-                <label htmlFor="address" className="block text-sm font-medium text-purple-200 mb-2">
+                <label htmlFor="address" className="block text-xs sm:text-sm font-medium text-purple-200 mb-1.5 sm:mb-2">
                   Адрес студии <span className="text-red-400">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-purple-300">
+                  <div className="absolute inset-y-0 left-0 pl-2.5 sm:pl-3 flex items-center pointer-events-none text-purple-300">
                     <MapPinIcon />
                   </div>
                   <select
@@ -530,7 +530,7 @@ export default function PricesPage() {
                     required
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className="w-full pl-10 pr-4 py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all appearance-none"
+                    className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all appearance-none text-sm sm:text-base"
                   >
                     <option value="" className="bg-purple-900">Выберите адрес</option>
                     <option value="Адрес 1" className="bg-purple-900">Адрес студии 1</option>
@@ -541,11 +541,11 @@ export default function PricesPage() {
 
               {/* Количество занятий */}
               <div>
-                <label htmlFor="lessons" className="block text-sm font-medium text-purple-200 mb-2">
+                <label htmlFor="lessons" className="block text-xs sm:text-sm font-medium text-purple-200 mb-1.5 sm:mb-2">
                   Количество занятий <span className="text-red-400">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-purple-300">
+                  <div className="absolute inset-y-0 left-0 pl-2.5 sm:pl-3 flex items-center pointer-events-none text-purple-300">
                     <ListIcon />
                   </div>
                   <select
@@ -553,7 +553,7 @@ export default function PricesPage() {
                     required
                     value={formData.lessons}
                     onChange={(e) => setFormData({ ...formData, lessons: e.target.value })}
-                    className="w-full pl-10 pr-4 py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all appearance-none"
+                    className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all appearance-none text-sm sm:text-base"
                   >
                     <option value="" className="bg-purple-900">Выберите количество занятий</option>
                     {selectedCategoryData?.subscriptions.map((sub: any, idx: number) => (
@@ -566,30 +566,30 @@ export default function PricesPage() {
               </div>
 
               {/* Тип записи */}
-              <div className="pt-4 border-t border-purple-500/20">
-              <label className="block text-sm font-medium text-purple-200 mb-3">
-                Тип записи <span className="text-red-400">*</span>
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="pt-3 sm:pt-4 border-t border-purple-500/20">
+                <label className="block text-xs sm:text-sm font-medium text-purple-200 mb-2 sm:mb-3">
+                  Тип записи <span className="text-red-400">*</span>
+                </label>
+                <div className="grid grid-cols-1 gap-2 sm:gap-3">
                 {/* Гибкая запись */}
                 <div
                   onClick={() => setFormData({ ...formData, bookingType: 'flexible', direction: '', weekdays: [] })}
-                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                  className={`p-3 sm:p-4 rounded-lg border-2 cursor-pointer transition-all ${
                     formData.bookingType === 'flexible'
                       ? 'border-purple-400 bg-purple-600/30'
                       : 'border-purple-500/20 bg-purple-800/20 hover:border-purple-400/50'
                   }`}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                  <div className="flex items-start gap-2 sm:gap-3">
+                    <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
                       formData.bookingType === 'flexible' ? 'border-purple-400' : 'border-purple-500/40'
                     }`}>
                       {formData.bookingType === 'flexible' && (
-                        <div className="w-3 h-3 rounded-full bg-purple-400"></div>
+                        <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-purple-400"></div>
                       )}
                     </div>
                     <div className="flex-1">
-                      <h4 className="text-white font-semibold mb-1">Гибкая запись</h4>
+                      <h4 className="text-sm sm:text-base text-white font-semibold mb-0.5 sm:mb-1">Гибкая запись</h4>
                       <p className="text-xs text-purple-200/70 leading-relaxed">
                         Вы записываетесь на занятия самостоятельно каждый раз в удобное время и день
                       </p>
@@ -600,22 +600,22 @@ export default function PricesPage() {
                 {/* Запись автоматом */}
                 <div
                   onClick={() => setFormData({ ...formData, bookingType: 'automatic' })}
-                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                  className={`p-3 sm:p-4 rounded-lg border-2 cursor-pointer transition-all ${
                     formData.bookingType === 'automatic'
                       ? 'border-purple-400 bg-purple-600/30'
                       : 'border-purple-500/20 bg-purple-800/20 hover:border-purple-400/50'
                   }`}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                  <div className="flex items-start gap-2 sm:gap-3">
+                    <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
                       formData.bookingType === 'automatic' ? 'border-purple-400' : 'border-purple-500/40'
                     }`}>
                       {formData.bookingType === 'automatic' && (
-                        <div className="w-3 h-3 rounded-full bg-purple-400"></div>
+                        <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-purple-400"></div>
                       )}
                     </div>
                     <div className="flex-1">
-                      <h4 className="text-white font-semibold mb-1">Запись автоматом</h4>
+                      <h4 className="text-sm sm:text-base text-white font-semibold mb-0.5 sm:mb-1">Запись автоматом</h4>
                       <p className="text-xs text-purple-200/70 leading-relaxed">
                         Вы закрепляетесь за определенным направлением и днями недели
                       </p>
@@ -627,10 +627,10 @@ export default function PricesPage() {
 
             {/* Дополнительные поля для автоматической записи */}
             {formData.bookingType === 'automatic' && (
-              <div className="grid grid-cols-1 gap-4 pt-4 border-t border-purple-500/20">
+              <div className="grid grid-cols-1 gap-3 sm:gap-4 pt-3 sm:pt-4 border-t border-purple-500/20">
                 {/* Выбор направления */}
                 <div>
-                  <label htmlFor="direction" className="block text-sm font-medium text-purple-200 mb-2">
+                  <label htmlFor="direction" className="block text-xs sm:text-sm font-medium text-purple-200 mb-1.5 sm:mb-2">
                     Направление <span className="text-red-400">*</span>
                   </label>
                   <select
@@ -638,7 +638,7 @@ export default function PricesPage() {
                     required={formData.bookingType === 'automatic'}
                     value={formData.direction}
                     onChange={(e) => setFormData({ ...formData, direction: e.target.value })}
-                    className="w-full px-4 py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all appearance-none text-sm"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all appearance-none text-sm"
                   >
                     <option value="" className="bg-purple-900">Выберите направление</option>
                     <option value="pole-fit" className="bg-purple-900">Pole Fit</option>
@@ -652,10 +652,10 @@ export default function PricesPage() {
 
                 {/* Выбор дней недели */}
                 <div>
-                  <label className="block text-sm font-medium text-purple-200 mb-2">
+                  <label className="block text-xs sm:text-sm font-medium text-purple-200 mb-1.5 sm:mb-2">
                     Дни недели <span className="text-red-400">*</span>
                   </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5 sm:gap-2">
                     {[
                       { value: 'monday', label: 'Пн' },
                       { value: 'tuesday', label: 'Вт' },
@@ -682,7 +682,7 @@ export default function PricesPage() {
                             })
                           }
                         }}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                        className={`px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                           (formData.weekdays || []).includes(day.value)
                             ? 'bg-purple-600 text-white border-2 border-purple-400'
                             : 'bg-purple-800/30 text-purple-200 border-2 border-purple-500/20 hover:border-purple-400/50'
@@ -692,7 +692,7 @@ export default function PricesPage() {
                       </button>
                     ))}
                   </div>
-                  <p className="text-xs text-purple-200/60 mt-2">
+                  <p className="text-xs text-purple-200/60 mt-1.5 sm:mt-2">
                     Выберите дни, в которые вы планируете посещать занятия
                   </p>
                 </div>
@@ -700,11 +700,11 @@ export default function PricesPage() {
             )}
 
             {/* Кнопки */}
-            <div className="flex gap-3 pt-4">
+            <div className="flex gap-2 sm:gap-3 pt-3 sm:pt-4 sticky bottom-0 bg-purple-900/95 -mx-3 sm:-mx-6 px-3 sm:px-6 py-3 sm:py-4 border-t border-purple-500/30 rounded-b-xl sm:rounded-b-2xl">
                 <Button
                   type="button"
                   variant="outline"
-                  className="flex-1"
+                  className="flex-1 text-sm sm:text-base py-2 sm:py-2.5"
                   onClick={() => setIsBookingModalOpen(false)}
                 >
                   Отмена
@@ -712,7 +712,7 @@ export default function PricesPage() {
                 <Button
                   type="submit"
                   variant="default"
-                  className="flex-1"
+                  className="flex-1 text-sm sm:text-base py-2 sm:py-2.5"
                 >
                   Отправить заявку
                 </Button>
