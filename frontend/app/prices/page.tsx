@@ -160,19 +160,49 @@ export default function PricesPage() {
     lastName: '',
     phone: '',
     address: '',
-    lessons: ''
+    lessons: '',
+    bookingType: 'flexible', // 'flexible' или 'automatic'
+    direction: '',
+    weekdays: [] as string[]
   })
 
   const handleBookingSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Валидация для автоматической записи
+    if (formData.bookingType === 'automatic') {
+      if (!formData.direction) {
+        alert('Пожалуйста, выберите направление')
+        return
+      }
+      if (!formData.weekdays || formData.weekdays.length === 0) {
+        alert('Пожалуйста, выберите хотя бы один день недели')
+        return
+      }
+    }
+    
     // Здесь будет логика отправки данных
     console.log('Booking data:', { ...formData, category: selectedCategory })
+    
     // Закрываем модальное окно и очищаем форму
     setIsBookingModalOpen(false)
-    setFormData({ firstName: '', lastName: '', phone: '', address: '', lessons: '' })
+    setFormData({ 
+      firstName: '', 
+      lastName: '', 
+      phone: '', 
+      address: '', 
+      lessons: '',
+      bookingType: 'flexible',
+      direction: '',
+      weekdays: []
+    })
     setSelectedLessons('')
-    // Можно добавить уведомление об успешной отправке
-    alert('Спасибо! Ваша заявка принята. Мы свяжемся с вами в ближайшее время.')
+    
+    // Уведомление с информацией о типе записи
+    const bookingTypeText = formData.bookingType === 'flexible' 
+      ? 'Вы выбрали гибкую запись.' 
+      : `Вы выбрали запись автоматом на ${formData.direction}.`
+    alert(`Спасибо! Ваша заявка принята. ${bookingTypeText} Мы свяжемся с вами в ближайшее время.`)
   }
 
   const openBookingModal = (category: any, lessons?: string) => {
@@ -180,10 +210,10 @@ export default function PricesPage() {
     setSelectedCategoryData(category)
     if (lessons) {
       setSelectedLessons(lessons)
-      setFormData(prev => ({ ...prev, lessons }))
+      setFormData(prev => ({ ...prev, lessons, bookingType: 'flexible', direction: '', weekdays: [] }))
     } else {
       setSelectedLessons('')
-      setFormData(prev => ({ ...prev, lessons: '' }))
+      setFormData(prev => ({ ...prev, lessons: '', bookingType: 'flexible', direction: '', weekdays: [] }))
     }
     setIsBookingModalOpen(true)
   }
@@ -535,8 +565,142 @@ export default function PricesPage() {
                 </div>
               </div>
 
-              {/* Кнопки */}
-              <div className="flex gap-3 pt-4">
+              {/* Тип записи */}
+              <div className="pt-4 border-t border-purple-500/20">
+              <label className="block text-sm font-medium text-purple-200 mb-3">
+                Тип записи <span className="text-red-400">*</span>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Гибкая запись */}
+                <div
+                  onClick={() => setFormData({ ...formData, bookingType: 'flexible', direction: '', weekdays: [] })}
+                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                    formData.bookingType === 'flexible'
+                      ? 'border-purple-400 bg-purple-600/30'
+                      : 'border-purple-500/20 bg-purple-800/20 hover:border-purple-400/50'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                      formData.bookingType === 'flexible' ? 'border-purple-400' : 'border-purple-500/40'
+                    }`}>
+                      {formData.bookingType === 'flexible' && (
+                        <div className="w-3 h-3 rounded-full bg-purple-400"></div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-white font-semibold mb-1">Гибкая запись</h4>
+                      <p className="text-xs text-purple-200/70 leading-relaxed">
+                        Вы записываетесь на занятия самостоятельно каждый раз в удобное время и день
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Запись автоматом */}
+                <div
+                  onClick={() => setFormData({ ...formData, bookingType: 'automatic' })}
+                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                    formData.bookingType === 'automatic'
+                      ? 'border-purple-400 bg-purple-600/30'
+                      : 'border-purple-500/20 bg-purple-800/20 hover:border-purple-400/50'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                      formData.bookingType === 'automatic' ? 'border-purple-400' : 'border-purple-500/40'
+                    }`}>
+                      {formData.bookingType === 'automatic' && (
+                        <div className="w-3 h-3 rounded-full bg-purple-400"></div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-white font-semibold mb-1">Запись автоматом</h4>
+                      <p className="text-xs text-purple-200/70 leading-relaxed">
+                        Вы закрепляетесь за определенным направлением и днями недели
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Дополнительные поля для автоматической записи */}
+            {formData.bookingType === 'automatic' && (
+              <div className="grid grid-cols-1 gap-4 pt-4 border-t border-purple-500/20">
+                {/* Выбор направления */}
+                <div>
+                  <label htmlFor="direction" className="block text-sm font-medium text-purple-200 mb-2">
+                    Направление <span className="text-red-400">*</span>
+                  </label>
+                  <select
+                    id="direction"
+                    required={formData.bookingType === 'automatic'}
+                    value={formData.direction}
+                    onChange={(e) => setFormData({ ...formData, direction: e.target.value })}
+                    className="w-full px-4 py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all appearance-none text-sm"
+                  >
+                    <option value="" className="bg-purple-900">Выберите направление</option>
+                    <option value="pole-fit" className="bg-purple-900">Pole Fit</option>
+                    <option value="pole-exotic" className="bg-purple-900">Pole Exotic</option>
+                    <option value="strength-flexibility" className="bg-purple-900">Сила & Гибкость</option>
+                    <option value="stretching" className="bg-purple-900">Растяжка</option>
+                    <option value="choreo" className="bg-purple-900">Choreo</option>
+                    <option value="strip" className="bg-purple-900">Strip</option>
+                  </select>
+                </div>
+
+                {/* Выбор дней недели */}
+                <div>
+                  <label className="block text-sm font-medium text-purple-200 mb-2">
+                    Дни недели <span className="text-red-400">*</span>
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { value: 'monday', label: 'Пн' },
+                      { value: 'tuesday', label: 'Вт' },
+                      { value: 'wednesday', label: 'Ср' },
+                      { value: 'thursday', label: 'Чт' },
+                      { value: 'friday', label: 'Пт' },
+                      { value: 'saturday', label: 'Сб' },
+                      { value: 'sunday', label: 'Вс' }
+                    ].map((day) => (
+                      <button
+                        key={day.value}
+                        type="button"
+                        onClick={() => {
+                          const weekdays = formData.weekdays || []
+                          if (weekdays.includes(day.value)) {
+                            setFormData({
+                              ...formData,
+                              weekdays: weekdays.filter(d => d !== day.value)
+                            })
+                          } else {
+                            setFormData({
+                              ...formData,
+                              weekdays: [...weekdays, day.value]
+                            })
+                          }
+                        }}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                          (formData.weekdays || []).includes(day.value)
+                            ? 'bg-purple-600 text-white border-2 border-purple-400'
+                            : 'bg-purple-800/30 text-purple-200 border-2 border-purple-500/20 hover:border-purple-400/50'
+                        }`}
+                      >
+                        {day.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-purple-200/60 mt-2">
+                    Выберите дни, в которые вы планируете посещать занятия
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Кнопки */}
+            <div className="flex gap-3 pt-4">
                 <Button
                   type="button"
                   variant="outline"
