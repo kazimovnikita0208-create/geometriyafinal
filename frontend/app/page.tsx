@@ -109,10 +109,12 @@ export default function Home() {
                 <img 
                   src="/logo.svg" 
                   alt="Геометрия" 
-                  className="w-20 h-20 sm:w-32 sm:h-32 object-contain"
+                  className="w-20 h-20 sm:w-32 sm:h-32 object-contain cursor-pointer hover:scale-110 transition-transform"
                   style={{
                     filter: 'brightness(0) invert(1)'
                   }}
+                  onClick={() => router.push('/admin')}
+                  title="Админ-панель"
                 />
 
                 {/* Subtitle - адаптивный размер */}
