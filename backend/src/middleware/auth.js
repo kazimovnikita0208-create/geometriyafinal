@@ -98,6 +98,30 @@ async function authMiddleware(req, res, next) {
 
     const token = authHeader.substring(7); // Убираем "Bearer "
 
+    // 🧪 ТЕСТОВЫЙ РЕЖИМ: Поддержка тестового токена для разработки
+    if (token === 'test-token-for-development' && (process.env.NODE_ENV === 'development' || process.env.ALLOW_TEST_TOKEN === 'true')) {
+      console.log('🧪 Используется тестовый токен для разработки');
+      // Ищем или создаем тестового пользователя
+      let testUser = await dbAdapter.get('users', { telegram_id: '999999999' });
+      
+      if (!testUser) {
+        testUser = await dbAdapter.insert('users', {
+          telegram_id: '999999999',
+          username: 'test_user',
+          first_name: 'Тестовый',
+          last_name: 'Пользователь',
+          is_admin: true,
+          is_active: true,
+          notifications_enabled: true
+        });
+        console.log('✅ Создан тестовый пользователь для тестового токена');
+      }
+      
+      req.user = testUser;
+      req.userId = testUser.id;
+      return next();
+    }
+
     // Верифицируем токен
     const decoded = verifyToken(token);
     
