@@ -251,9 +251,9 @@ async function migrateLessons() {
         const date = new Date(lesson.specific_date);
         dayOfWeek = date.getDay(); // 0 = воскресенье, 1 = понедельник, и т.д.
       } else {
-        // Если нет ни day_of_week, ни specific_date, пропускаем эту запись
-        console.warn(`  ⚠️ Пропущено занятие ${lesson.id}: нет day_of_week и specific_date`);
-        continue;
+        // Если нет ни day_of_week, ни specific_date, устанавливаем NULL
+        // Это допустимо, так как колонка теперь может быть NULL
+        dayOfWeek = null;
       }
     }
     
