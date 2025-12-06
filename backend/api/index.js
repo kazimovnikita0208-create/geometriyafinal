@@ -9,7 +9,12 @@ if (process.env.VERCEL) {
 // Импортируем Express app
 const app = require('../src/index.js');
 
-// Экспортируем для Vercel
-// Vercel автоматически обработает все HTTP методы, включая OPTIONS
-// Используем app напрямую - Vercel распознает Express app
-module.exports = app;
+// Для Vercel нужно экспортировать функцию handler
+// Vercel автоматически передаст все HTTP методы, включая OPTIONS
+module.exports = (req, res) => {
+  // Логируем входящий запрос
+  console.log(`📥 Vercel handler: ${req.method} ${req.url} | Origin: ${req.headers.origin || 'none'}`);
+  
+  // Передаем запрос в Express app
+  return app(req, res);
+};
