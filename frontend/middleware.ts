@@ -1,16 +1,11 @@
-import { updateSession } from './utils/supabase/middleware'
 import type { NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
 
+// Упрощенный middleware без Supabase (так как у нас своя аутентификация через Telegram)
 export async function middleware(request: NextRequest) {
-  try {
-    return await updateSession(request)
-  } catch (error) {
-    // В случае ошибки просто пропускаем запрос
-    console.error('Middleware error:', error)
-    return new Response(null, {
-      status: 200,
-    })
-  }
+  // Просто пропускаем запрос без обработки Supabase
+  // Supabase используется только на клиенте, не в middleware
+  return NextResponse.next()
 }
 
 export const config = {

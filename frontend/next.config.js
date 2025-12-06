@@ -12,11 +12,6 @@ const nextConfig = {
   // Настройки для production
   poweredByHeader: false,
   
-  // Исправление для Edge Runtime и ESM/CommonJS совместимости
-  experimental: {
-    serverComponentsExternalPackages: ['@supabase/ssr'],
-  },
-  
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
