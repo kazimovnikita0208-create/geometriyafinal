@@ -1,0 +1,277 @@
+-- Миграция схемы базы данных из SQLite в Supabase PostgreSQL
+-- Создание всех таблиц для студии танцев "Геометрия"
+
+-- ============================================
+-- 1. Таблица пользователей
+-- ============================================
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  telegram_id BIGINT UNIQUE NOT NULL,
+  username VARCHAR(255),
+  first_name VARCHAR(255),
+  last_name VARCHAR(255),
+  phone VARCHAR(50),
+  is_active BOOLEAN DEFAULT TRUE,
+  notifications_enabled BOOLEAN DEFAULT TRUE,
+  is_admin BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_telegram_id ON users(telegram_id);
+CREATE INDEX IF NOT EXISTS idx_users_is_active ON users(is_active);
+
+-- ============================================
+-- 2. Таблица залов
+-- ============================================
+CREATE TABLE IF NOT EXISTS halls (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  address TEXT NOT NULL,
+  capacity INTEGER DEFAULT 6,
+  has_poles BOOLEAN DEFAULT TRUE,
+  pole_count INTEGER DEFAULT 6,
+  price_per_hour DECIMAL(10, 2) NOT NULL,
+  is_active BOOLEAN DEFAULT TRUE
+);
+
+CREATE INDEX IF NOT EXISTS idx_halls_is_active ON halls(is_active);
+
+-- ============================================
+-- 3. Таблица направлений
+-- ============================================
+CREATE TABLE IF NOT EXISTS directions (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  slug VARCHAR(255) UNIQUE NOT NULL,
+  description TEXT,
+  tagline VARCHAR(255),
+  features JSONB, -- JSON array
+  levels JSONB,   -- JSON array
+  color VARCHAR(7) DEFAULT '#5833b6',
+  is_active BOOLEAN DEFAULT TRUE
+);
+
+CREATE INDEX IF NOT EXISTS idx_directions_slug ON directions(slug);
+CREATE INDEX IF NOT EXISTS idx_directions_is_active ON directions(is_active);
+
+-- ============================================
+-- 4. Таблица тренеров
+-- ============================================
+CREATE TABLE IF NOT EXISTS trainers (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255),
+  phone VARCHAR(50),
+  directions JSONB, -- JSON array of direction IDs
+  bio TEXT,
+  is_active BOOLEAN DEFAULT TRUE
+);
+
+CREATE INDEX IF NOT EXISTS idx_trainers_is_active ON trainers(is_active);
+
+-- ============================================
+-- 5. Таблица типов абонементов
+-- ============================================
+CREATE TABLE IF NOT EXISTS subscription_types (
+  id SERIAL PRIMARY KEY,
+  category VARCHAR(255) NOT NULL, -- "КЛАССИЧЕСКИЙ", "ТОЛЬКО ФИТНЕС", "КОМБО-АБОНЕМЕНТ"
+  name VARCHAR(255) NOT NULL,      -- "8 занятий", "4 занятия", etc.
+  lesson_count INTEGER NOT NULL,
+  validity_days INTEGER DEFAULT 30,
+  price DECIMAL(10, 2) NOT NULL,
+  description TEXT,
+  is_active BOOLEAN DEFAULT TRUE
+);
+
+CREATE INDEX IF NOT EXISTS idx_subscription_types_is_active ON subscription_types(is_active);
+
+-- ============================================
+-- 6. Таблица абонементов пользователей
+-- ============================================
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  subscription_type_id INTEGER NOT NULL REFERENCES subscription_types(id) ON DELETE RESTRICT,
+  lessons_remaining INTEGER NOT NULL,
+  valid_from TIMESTAMP WITH TIME ZONE NOT NULL,
+  valid_until TIMESTAMP WITH TIME ZONE NOT NULL,
+  booking_type VARCHAR(50) DEFAULT 'flexible', -- "flexible" | "automatic"
+  auto_direction VARCHAR(255),                  -- для automatic booking
+  auto_weekdays JSONB,                          -- JSON array
+  status VARCHAR(50) DEFAULT 'pending',          -- "pending", "confirmed", "expired"
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_subscription_type_id ON subscriptions(subscription_type_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_is_active ON subscriptions(is_active);
+
+-- ============================================
+-- 7. Таблица занятий (расписание)
+-- ============================================
+CREATE TABLE IF NOT EXISTS lessons (
+  id SERIAL PRIMARY KEY,
+  hall_id INTEGER NOT NULL REFERENCES halls(id) ON DELETE RESTRICT,
+  direction_id INTEGER NOT NULL REFERENCES directions(id) ON DELETE RESTRICT,
+  trainer_id INTEGER NOT NULL REFERENCES trainers(id) ON DELETE RESTRICT,
+  day_of_week INTEGER NOT NULL, -- 0-6 (Воскресенье-Суббота)
+  start_time VARCHAR(10) NOT NULL, -- "18:00"
+  end_time VARCHAR(10) NOT NULL,  -- "19:30"
+  capacity INTEGER DEFAULT 6,
+  is_recurring BOOLEAN DEFAULT TRUE,
+  specific_date TIMESTAMP WITH TIME ZONE, -- Для разовых занятий
+  description TEXT,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_lessons_hall_id ON lessons(hall_id);
+CREATE INDEX IF NOT EXISTS idx_lessons_direction_id ON lessons(direction_id);
+CREATE INDEX IF NOT EXISTS idx_lessons_trainer_id ON lessons(trainer_id);
+CREATE INDEX IF NOT EXISTS idx_lessons_day_of_week ON lessons(day_of_week);
+CREATE INDEX IF NOT EXISTS idx_lessons_is_active ON lessons(is_active);
+CREATE INDEX IF NOT EXISTS idx_lessons_specific_date ON lessons(specific_date);
+
+-- ============================================
+-- 8. Таблица записей на занятия
+-- ============================================
+CREATE TABLE IF NOT EXISTS bookings (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  lesson_id INTEGER NOT NULL REFERENCES lessons(id) ON DELETE RESTRICT,
+  subscription_id INTEGER NOT NULL REFERENCES subscriptions(id) ON DELETE RESTRICT,
+  booking_date TIMESTAMP WITH TIME ZONE NOT NULL, -- Конкретная дата занятия
+  status VARCHAR(50) DEFAULT 'confirmed',         -- "confirmed", "cancelled", "completed"
+  booked_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  cancelled_at TIMESTAMP WITH TIME ZONE,
+  cancellation_reason TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_bookings_user_id ON bookings(user_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_lesson_id ON bookings(lesson_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_subscription_id ON bookings(subscription_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_booking_date ON bookings(booking_date);
+CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
+
+-- ============================================
+-- 9. Таблица аренды залов/пилонов
+-- ============================================
+CREATE TABLE IF NOT EXISTS rental_bookings (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  hall_id INTEGER NOT NULL REFERENCES halls(id) ON DELETE RESTRICT,
+  rental_type VARCHAR(50) NOT NULL, -- "hall" | "pole"
+  pole_count INTEGER,
+  start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+  end_time TIMESTAMP WITH TIME ZONE NOT NULL,
+  participants INTEGER,
+  total_price DECIMAL(10, 2) NOT NULL,
+  comment TEXT,
+  status VARCHAR(50) DEFAULT 'pending', -- "pending", "confirmed", "cancelled"
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_rental_bookings_user_id ON rental_bookings(user_id);
+CREATE INDEX IF NOT EXISTS idx_rental_bookings_hall_id ON rental_bookings(hall_id);
+CREATE INDEX IF NOT EXISTS idx_rental_bookings_status ON rental_bookings(status);
+CREATE INDEX IF NOT EXISTS idx_rental_bookings_start_time ON rental_bookings(start_time);
+
+-- ============================================
+-- 10. Таблица уведомлений
+-- ============================================
+CREATE TABLE IF NOT EXISTS notifications (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, -- null для массовых рассылок
+  type VARCHAR(100) NOT NULL, -- "booking_reminder", "subscription_expiry", "booking_confirmed", etc.
+  title VARCHAR(255) NOT NULL,
+  message TEXT NOT NULL,
+  is_sent BOOLEAN DEFAULT FALSE,
+  sent_at TIMESTAMP WITH TIME ZONE,
+  scheduled_for TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type);
+CREATE INDEX IF NOT EXISTS idx_notifications_is_sent ON notifications(is_sent);
+CREATE INDEX IF NOT EXISTS idx_notifications_scheduled_for ON notifications(scheduled_for);
+
+-- ============================================
+-- 11. Таблица настроек системы
+-- ============================================
+CREATE TABLE IF NOT EXISTS settings (
+  id SERIAL PRIMARY KEY,
+  key VARCHAR(255) UNIQUE NOT NULL,
+  value TEXT NOT NULL,
+  description TEXT,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_settings_key ON settings(key);
+
+-- ============================================
+-- Включение Row Level Security (RLS)
+-- ============================================
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE halls ENABLE ROW LEVEL SECURITY;
+ALTER TABLE directions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE trainers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subscription_types ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lessons ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rental_bookings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
+
+-- ============================================
+-- Политики безопасности (базовые)
+-- ============================================
+-- Пользователи могут видеть свои данные
+CREATE POLICY "Users can view own data" ON users
+  FOR SELECT USING (true); -- Можно настроить более строгую политику
+
+-- Пользователи могут обновлять свои данные
+CREATE POLICY "Users can update own data" ON users
+  FOR UPDATE USING (true);
+
+-- Все могут видеть активные залы, направления, тренеров
+CREATE POLICY "Anyone can view active halls" ON halls
+  FOR SELECT USING (is_active = true);
+
+CREATE POLICY "Anyone can view active directions" ON directions
+  FOR SELECT USING (is_active = true);
+
+CREATE POLICY "Anyone can view active trainers" ON trainers
+  FOR SELECT USING (is_active = true);
+
+CREATE POLICY "Anyone can view active subscription types" ON subscription_types
+  FOR SELECT USING (is_active = true);
+
+-- Пользователи могут видеть свои абонементы
+CREATE POLICY "Users can view own subscriptions" ON subscriptions
+  FOR SELECT USING (true);
+
+-- Пользователи могут видеть свои записи
+CREATE POLICY "Users can view own bookings" ON bookings
+  FOR SELECT USING (true);
+
+-- Пользователи могут видеть свои аренды
+CREATE POLICY "Users can view own rental bookings" ON rental_bookings
+  FOR SELECT USING (true);
+
+-- Пользователи могут видеть свои уведомления
+CREATE POLICY "Users can view own notifications" ON notifications
+  FOR SELECT USING (user_id IS NULL OR true); -- Все могут видеть массовые уведомления
+
+-- Все могут видеть расписание
+CREATE POLICY "Anyone can view active lessons" ON lessons
+  FOR SELECT USING (is_active = true);
+
+-- Все могут видеть настройки
+CREATE POLICY "Anyone can view settings" ON settings
+  FOR SELECT USING (true);
+
