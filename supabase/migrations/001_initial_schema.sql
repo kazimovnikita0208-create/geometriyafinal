@@ -117,7 +117,7 @@ CREATE TABLE IF NOT EXISTS lessons (
   hall_id INTEGER NOT NULL REFERENCES halls(id) ON DELETE RESTRICT,
   direction_id INTEGER NOT NULL REFERENCES directions(id) ON DELETE RESTRICT,
   trainer_id INTEGER NOT NULL REFERENCES trainers(id) ON DELETE RESTRICT,
-  day_of_week INTEGER NOT NULL, -- 0-6 (Воскресенье-Суббота)
+  day_of_week INTEGER, -- 0-6 (Воскресенье-Суббота), NULL для разовых занятий с specific_date
   start_time VARCHAR(10) NOT NULL, -- "18:00"
   end_time VARCHAR(10) NOT NULL,  -- "19:30"
   capacity INTEGER DEFAULT 6,

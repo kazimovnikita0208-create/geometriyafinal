@@ -243,6 +243,20 @@ async function migrateLessons() {
   const lessons = db.prepare('SELECT * FROM lessons').all();
   
   for (const lesson of lessons) {
+    // Обработка NULL значений для day_of_week
+    // Если day_of_week NULL, но есть specific_date, вычисляем день недели
+    let dayOfWeek = lesson.day_of_week;
+    if (dayOfWeek === null || dayOfWeek === undefined) {
+      if (lesson.specific_date) {
+        const date = new Date(lesson.specific_date);
+        dayOfWeek = date.getDay(); // 0 = воскресенье, 1 = понедельник, и т.д.
+      } else {
+        // Если нет ни day_of_week, ни specific_date, пропускаем эту запись
+        console.warn(`  ⚠️ Пропущено занятие ${lesson.id}: нет day_of_week и specific_date`);
+        continue;
+      }
+    }
+    
     const { error } = await supabase
       .from('lessons')
       .upsert({
@@ -250,10 +264,10 @@ async function migrateLessons() {
         hall_id: lesson.hall_id,
         direction_id: lesson.direction_id,
         trainer_id: lesson.trainer_id,
-        day_of_week: lesson.day_of_week,
-        start_time: lesson.start_time,
-        end_time: lesson.end_time,
-        capacity: lesson.capacity,
+        day_of_week: dayOfWeek,
+        start_time: lesson.start_time || '00:00',
+        end_time: lesson.end_time || '23:59',
+        capacity: lesson.capacity || 6,
         is_recurring: convertValue(lesson.is_recurring, 'boolean'),
         specific_date: convertValue(lesson.specific_date, 'timestamp'),
         description: lesson.description,
