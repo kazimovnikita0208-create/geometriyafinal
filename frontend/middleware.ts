@@ -1,9 +1,6 @@
 import { updateSession } from './utils/supabase/middleware'
 import type { NextRequest } from 'next/server'
 
-// Указываем, что middleware должен работать в Edge Runtime
-export const runtime = 'edge'
-
 export async function middleware(request: NextRequest) {
   try {
     return await updateSession(request)
