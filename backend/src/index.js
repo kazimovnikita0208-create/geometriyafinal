@@ -18,7 +18,8 @@ const allowedOrigins = [
   process.env.FRONTEND_URL
 ].filter(Boolean); // Убираем undefined значения
 
-app.use(cors({
+// CORS конфигурация - разрешаем все для production
+const corsOptions = {
   origin: function (origin, callback) {
     // Разрешаем запросы без origin (например, Postman, мобильные приложения)
     if (!origin) return callback(null, true);
@@ -36,21 +37,36 @@ app.use(cors({
     if (isAllowed) {
       callback(null, true);
     } else {
-      // В production логируем, но не блокируем (для отладки)
-      if (process.env.NODE_ENV === 'production') {
-        console.warn(`⚠️  CORS: Запрос с неразрешенного origin: ${origin}`);
-        // В production разрешаем все для гибкости
+      // В production разрешаем все для гибкости
+      if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
+        console.log(`✅ CORS: Разрешен запрос с origin: ${origin}`);
         callback(null, true);
       } else {
-        callback(new Error('Not allowed by CORS'));
+        console.warn(`⚠️  CORS: Запрос с неразрешенного origin: ${origin}`);
+        callback(null, true); // Разрешаем для отладки
       }
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  exposedHeaders: ['Content-Type', 'Authorization']
-}));
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Access-Control-Request-Method',
+    'Access-Control-Request-Headers'
+  ],
+  exposedHeaders: ['Content-Type', 'Authorization'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
+};
+
+app.use(cors(corsOptions));
+
+// Явная обработка preflight запросов (на всякий случай)
+app.options('*', cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
