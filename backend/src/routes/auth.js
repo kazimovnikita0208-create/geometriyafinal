@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
+const dbAdapter = require('../config/database-adapter');
 const { telegramAuthMiddleware } = require('../middleware/telegramAuth');
 const { generateToken, authMiddleware } = require('../middleware/auth');
 const { isAdmin } = require('../config/telegram');
@@ -14,40 +15,33 @@ router.post('/login', telegramAuthMiddleware, async (req, res) => {
     const telegramUser = req.telegramUser;
 
     // Ищем пользователя
-    let user = db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(telegramUser.id);
+    let user = await dbAdapter.get('users', { telegram_id: telegramUser.id.toString() });
 
     if (!user) {
       // Создаем нового пользователя
-      const insertUser = db.prepare(`
-        INSERT INTO users (telegram_id, username, first_name, last_name, is_admin, is_active, notifications_enabled)
-        VALUES (?, ?, ?, ?, ?, 1, 1)
-      `);
-      
-      const result = insertUser.run(
-        telegramUser.id,
-        telegramUser.username || null,
-        telegramUser.first_name || null,
-        telegramUser.last_name || null,
-        isAdmin(telegramUser.id) ? 1 : 0
-      );
+      const userData = {
+        telegram_id: telegramUser.id.toString(),
+        username: telegramUser.username || null,
+        first_name: telegramUser.first_name || null,
+        last_name: telegramUser.last_name || null,
+        is_admin: isAdmin(telegramUser.id),
+        is_active: true,
+        notifications_enabled: true
+      };
 
-      user = db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
+      user = await dbAdapter.insert('users', userData);
       console.log(`✅ Создан новый пользователь: ${user.first_name} (ID: ${user.id})`);
     } else {
       // Обновляем данные существующего пользователя
-      db.prepare(`
-        UPDATE users 
-        SET username = ?, first_name = ?, last_name = ?, is_admin = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `).run(
-        telegramUser.username || user.username,
-        telegramUser.first_name || user.first_name,
-        telegramUser.last_name || user.last_name,
-        isAdmin(telegramUser.id) ? 1 : 0,
-        user.id
-      );
+      const updateData = {
+        username: telegramUser.username || user.username,
+        first_name: telegramUser.first_name || user.first_name,
+        last_name: telegramUser.last_name || user.last_name,
+        is_admin: isAdmin(telegramUser.id),
+        updated_at: new Date().toISOString()
+      };
 
-      user = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id);
+      user = await dbAdapter.update('users', updateData, { id: user.id });
       console.log(`✅ Пользователь вошел: ${user.first_name} (ID: ${user.id})`);
     }
 
@@ -55,7 +49,7 @@ router.post('/login', telegramAuthMiddleware, async (req, res) => {
     const token = generateToken({
       id: user.id,
       telegramId: user.telegram_id,
-      isAdmin: user.is_admin === 1
+      isAdmin: user.is_admin === true || user.is_admin === 1
     });
     
     // Возвращаем токен и данные пользователя
@@ -68,8 +62,8 @@ router.post('/login', telegramAuthMiddleware, async (req, res) => {
         firstName: user.first_name,
         lastName: user.last_name,
         phone: user.phone,
-        isAdmin: user.is_admin === 1,
-        notificationsEnabled: user.notifications_enabled === 1,
+        isAdmin: user.is_admin === true || user.is_admin === 1,
+        notificationsEnabled: user.notifications_enabled === true || user.notifications_enabled === 1,
         createdAt: user.created_at
       }
     });
@@ -86,23 +80,33 @@ router.post('/login', telegramAuthMiddleware, async (req, res) => {
  * GET /api/auth/me
  * Получить текущего пользователя
  */
-router.get('/me', authMiddleware, (req, res) => {
+router.get('/me', authMiddleware, async (req, res) => {
   try {
     const user = req.user;
     
+    // Получаем актуальные данные пользователя из БД
+    const currentUser = await dbAdapter.get('users', { id: user.id });
+    
+    if (!currentUser) {
+      return res.status(404).json({ 
+        error: 'User not found',
+        message: 'Пользователь не найден' 
+      });
+    }
+    
     res.json({
       user: {
-        id: user.id,
-        telegramId: user.telegram_id.toString(),
-        username: user.username,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        phone: user.phone,
-        isAdmin: user.is_admin === 1,
-        notificationsEnabled: user.notifications_enabled === 1,
-        isActive: user.is_active === 1,
-        createdAt: user.created_at,
-        updatedAt: user.updated_at
+        id: currentUser.id,
+        telegramId: currentUser.telegram_id.toString(),
+        username: currentUser.username,
+        firstName: currentUser.first_name,
+        lastName: currentUser.last_name,
+        phone: currentUser.phone,
+        isAdmin: currentUser.is_admin === true || currentUser.is_admin === 1,
+        notificationsEnabled: currentUser.notifications_enabled === true || currentUser.notifications_enabled === 1,
+        isActive: currentUser.is_active === true || currentUser.is_active === 1,
+        createdAt: currentUser.created_at,
+        updatedAt: currentUser.updated_at
       }
     });
   } catch (error) {

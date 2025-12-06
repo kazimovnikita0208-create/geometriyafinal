@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const db = require('../config/database');
+const dbAdapter = require('../config/database-adapter');
 const { isAdmin: checkIsAdmin } = require('../config/telegram');
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -55,22 +56,28 @@ async function authMiddleware(req, res, next) {
     // 🚀 РЕЖИМ РАЗРАБОТКИ: Создаем тестового пользователя
     if (DEV_MODE) {
       // Проверяем, есть ли тестовый пользователь
-      let testUser = db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(999999999);
+      let testUser = await dbAdapter.get('users', { telegram_id: '999999999' });
       
       // Если нет - создаем
       if (!testUser) {
-        db.prepare(`
-          INSERT INTO users (telegram_id, username, first_name, last_name, phone, is_admin)
-          VALUES (?, ?, ?, ?, ?, ?)
-        `).run(999999999, 'test_admin', 'Тестовый', 'Администратор', '89397187500', 1);
-        
-        testUser = db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(999999999);
+        testUser = await dbAdapter.insert('users', {
+          telegram_id: '999999999',
+          username: 'test_admin',
+          first_name: 'Тестовый',
+          last_name: 'Администратор',
+          phone: '89397187500',
+          is_admin: true,
+          is_active: true,
+          notifications_enabled: true
+        });
         console.log('✅ Создан тестовый АДМИН для DEV_MODE');
-      } else if (testUser.is_admin === 0) {
+      } else if (!testUser.is_admin) {
         // Если пользователь есть, но не админ - делаем его админом
-        db.prepare('UPDATE users SET is_admin = 1, first_name = ?, last_name = ? WHERE telegram_id = ?')
-          .run('Тестовый', 'Администратор', 999999999);
-        testUser = db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(999999999);
+        testUser = await dbAdapter.update('users', {
+          is_admin: true,
+          first_name: 'Тестовый',
+          last_name: 'Администратор'
+        }, { telegram_id: '999999999' });
         console.log('✅ Тестовый пользователь обновлён до АДМИНА');
       }
       
@@ -102,9 +109,9 @@ async function authMiddleware(req, res, next) {
   }
   
     // Получаем пользователя из БД
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.id);
+    const user = await dbAdapter.get('users', { id: decoded.id });
 
-    if (!user || user.is_active !== 1) {
+    if (!user || (user.is_active !== true && user.is_active !== 1)) {
       return res.status(401).json({ 
         error: 'Unauthorized',
         message: 'User not found or inactive' 
