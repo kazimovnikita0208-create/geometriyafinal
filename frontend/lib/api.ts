@@ -10,7 +10,10 @@ class ApiClient {
   }
 
   async request<T>(endpoint: string, options?: RequestInit & { timeout?: number }): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`;
+    // Убираем двойной слэш, если baseURL заканчивается на /, а endpoint начинается с /
+    const baseURL = this.baseURL.endsWith('/') ? this.baseURL.slice(0, -1) : this.baseURL;
+    const endpointPath = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const url = `${baseURL}${endpointPath}`;
     
     // Определяем таймаут: по умолчанию 5 секунд, но можно переопределить
     const timeout = options?.timeout ?? 5000;

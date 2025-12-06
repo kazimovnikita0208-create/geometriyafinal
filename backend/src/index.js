@@ -63,10 +63,18 @@ const corsOptions = {
   optionsSuccessStatus: 204
 };
 
+// Применяем CORS до всех маршрутов
 app.use(cors(corsOptions));
 
-// Явная обработка preflight запросов (на всякий случай)
-app.options('*', cors(corsOptions));
+// Явная обработка preflight запросов - ДО всех других маршрутов
+app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Access-Control-Request-Method, Access-Control-Request-Headers');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Max-Age', '86400'); // 24 часа
+  res.sendStatus(204);
+});
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
