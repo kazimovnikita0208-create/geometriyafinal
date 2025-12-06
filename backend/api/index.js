@@ -1,4 +1,13 @@
 // Vercel serverless function entry point
 // Этот файл используется Vercel для обработки всех запросов
-module.exports = require('../src/index.js');
 
+// Проверяем, что мы на Vercel
+if (process.env.VERCEL) {
+  console.log('🚀 Запуск на Vercel');
+}
+
+// Импортируем Express app
+const app = require('../src/index.js');
+
+// Экспортируем для Vercel
+module.exports = app;
