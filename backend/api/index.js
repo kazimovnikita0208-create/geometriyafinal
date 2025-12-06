@@ -10,4 +10,5 @@ if (process.env.VERCEL) {
 const app = require('../src/index.js');
 
 // Экспортируем для Vercel
+// Vercel автоматически обработает все HTTP методы, включая OPTIONS
 module.exports = app;

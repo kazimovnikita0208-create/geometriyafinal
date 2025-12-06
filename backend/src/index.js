@@ -1,6 +1,5 @@
 require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
 const db = require('./config/database');
 
 // Инициализация
@@ -8,67 +7,49 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware - CORS конфигурация
-// На Vercel разрешаем все origins для гибкости
-const corsMiddleware = (req, res, next) => {
+// Упрощенная и надежная конфигурация для Vercel
+// ВАЖНО: Этот middleware должен быть ПЕРВЫМ
+app.use((req, res, next) => {
   const origin = req.headers.origin;
   
-  // Разрешаем все origins на Vercel
-  if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
-    if (origin) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-    } else {
-      res.setHeader('Access-Control-Allow-Origin', '*');
-    }
+  // Разрешаем все origins (особенно важно для Vercel)
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
   } else {
-    // Для локальной разработки проверяем разрешенные origins
-    const allowedOrigins = [
-      'http://localhost:3000',
-      'http://localhost:3002',
-      'http://localhost:3003',
-      process.env.FRONTEND_URL
-    ].filter(Boolean);
-    
-    if (!origin || allowedOrigins.includes(origin)) {
-      res.setHeader('Access-Control-Allow-Origin', origin || '*');
-    }
+    res.setHeader('Access-Control-Allow-Origin', '*');
   }
   
-  // Устанавливаем все необходимые заголовки для всех запросов
+  // Устанавливаем все необходимые заголовки
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Access-Control-Request-Method, Access-Control-Request-Headers');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Expose-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Max-Age', '86400'); // 24 часа
   
-  // Для OPTIONS запросов сразу возвращаем ответ
+  // Для OPTIONS запросов (preflight) сразу возвращаем ответ
   if (req.method === 'OPTIONS') {
-    return res.sendStatus(204);
+    console.log(`✅ OPTIONS preflight request handled for: ${req.path}`);
+    return res.status(204).end();
   }
   
   next();
-};
+});
 
-// Применяем CORS middleware ДО всех других middleware
-app.use(corsMiddleware);
-
-// Дополнительно используем cors для совместимости
-app.use(cors({
-  origin: true, // Разрешаем все origins
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'X-Requested-With',
-    'Accept',
-    'Origin',
-    'Access-Control-Request-Method',
-    'Access-Control-Request-Headers'
-  ],
-  exposedHeaders: ['Content-Type', 'Authorization'],
-  preflightContinue: false,
-  optionsSuccessStatus: 204
-}));
+// Явный маршрут для всех OPTIONS запросов (дополнительная защита)
+app.options('*', (req, res) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Access-Control-Request-Method, Access-Control-Request-Headers');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Max-Age', '86400');
+  console.log(`✅ OPTIONS route handler for: ${req.path}`);
+  res.status(204).end();
+});
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
