@@ -1,10 +1,9 @@
-import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
-// Упрощенный middleware без Supabase (так как у нас своя аутентификация через Telegram)
-export async function middleware(request: NextRequest) {
-  // Просто пропускаем запрос без обработки Supabase
-  // Supabase используется только на клиенте, не в middleware
+// Минимальный middleware - просто пропускает все запросы
+// Supabase используется только на клиенте, не в middleware
+export function middleware(request: NextRequest) {
   return NextResponse.next()
 }
 
