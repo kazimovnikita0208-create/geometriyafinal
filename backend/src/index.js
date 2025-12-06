@@ -11,6 +11,11 @@ const PORT = process.env.PORT || 3001;
 // ВАЖНО: Этот middleware должен быть ПЕРВЫМ
 app.use((req, res, next) => {
   const origin = req.headers.origin;
+  const method = req.method;
+  const path = req.path;
+  
+  // Логируем все запросы для отладки
+  console.log(`📥 ${method} ${path} | Origin: ${origin || 'none'}`);
   
   // Разрешаем все origins (особенно важно для Vercel)
   if (origin) {
@@ -27,8 +32,8 @@ app.use((req, res, next) => {
   res.setHeader('Access-Control-Max-Age', '86400'); // 24 часа
   
   // Для OPTIONS запросов (preflight) сразу возвращаем ответ
-  if (req.method === 'OPTIONS') {
-    console.log(`✅ OPTIONS preflight request handled for: ${req.path}`);
+  if (method === 'OPTIONS') {
+    console.log(`✅ OPTIONS preflight request handled for: ${path} | Origin: ${origin || 'none'}`);
     return res.status(204).end();
   }
   
@@ -36,8 +41,13 @@ app.use((req, res, next) => {
 });
 
 // Явный маршрут для всех OPTIONS запросов (дополнительная защита)
+// Этот маршрут должен быть ДО всех других маршрутов
 app.options('*', (req, res) => {
   const origin = req.headers.origin;
+  const path = req.path;
+  
+  console.log(`🔵 OPTIONS route handler called for: ${path} | Origin: ${origin || 'none'}`);
+  
   if (origin) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   } else {
@@ -47,7 +57,8 @@ app.options('*', (req, res) => {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Access-Control-Request-Method, Access-Control-Request-Headers');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Max-Age', '86400');
-  console.log(`✅ OPTIONS route handler for: ${req.path}`);
+  
+  console.log(`✅ OPTIONS route handler completed for: ${path}`);
   res.status(204).end();
 });
 app.use(express.json());

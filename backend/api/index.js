@@ -11,4 +11,5 @@ const app = require('../src/index.js');
 
 // Экспортируем для Vercel
 // Vercel автоматически обработает все HTTP методы, включая OPTIONS
+// Используем app напрямую - Vercel распознает Express app
 module.exports = app;
