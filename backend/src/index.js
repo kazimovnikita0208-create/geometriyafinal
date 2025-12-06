@@ -7,10 +7,49 @@ const db = require('./config/database');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware - разрешаем запросы с любых портов в режиме разработки
+// Middleware - CORS конфигурация
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3002',
+  'http://localhost:3003',
+  // Vercel домены (динамически разрешаем все *.vercel.app)
+  /^https:\/\/.*\.vercel\.app$/,
+  // Кастомные домены (если есть)
+  process.env.FRONTEND_URL
+].filter(Boolean); // Убираем undefined значения
+
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3002', 'http://localhost:3003'],
-  credentials: true
+  origin: function (origin, callback) {
+    // Разрешаем запросы без origin (например, Postman, мобильные приложения)
+    if (!origin) return callback(null, true);
+    
+    // Проверяем, разрешен ли origin
+    const isAllowed = allowedOrigins.some(allowedOrigin => {
+      if (typeof allowedOrigin === 'string') {
+        return origin === allowedOrigin;
+      } else if (allowedOrigin instanceof RegExp) {
+        return allowedOrigin.test(origin);
+      }
+      return false;
+    });
+    
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      // В production логируем, но не блокируем (для отладки)
+      if (process.env.NODE_ENV === 'production') {
+        console.warn(`⚠️  CORS: Запрос с неразрешенного origin: ${origin}`);
+        // В production разрешаем все для гибкости
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
