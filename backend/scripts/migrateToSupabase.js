@@ -67,7 +67,6 @@ async function migrateUsers() {
     const { error } = await supabase
       .from('users')
       .upsert({
-        id: user.id,
         telegram_id: user.telegram_id.toString(),
         username: user.username,
         first_name: user.first_name,
@@ -99,7 +98,6 @@ async function migrateHalls() {
     const { error } = await supabase
       .from('halls')
       .upsert({
-        id: hall.id,
         name: hall.name,
         address: hall.address,
         capacity: hall.capacity,
