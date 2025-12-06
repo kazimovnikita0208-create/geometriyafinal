@@ -4,6 +4,9 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { BeamsBackground } from '@/components/ui/beams-background'
 import { Button } from '@/components/ui/button'
+import api, { subscriptionsAPI, Subscription, bookingsAPI, Booking, RentalBooking, rentalAPI } from '@/lib/api'
+import { SubscriptionCard } from '@/components/SubscriptionCard'
+import { initTelegramAuth } from '@/lib/auth'
 
 // Иконки
 const ChevronLeftIcon = () => (
@@ -42,30 +45,28 @@ const XIcon = () => (
   </svg>
 )
 
-// Моковые данные для демонстрации
-const mockUpcomingLessons = [
-  {
-    id: 1,
-    title: 'Pole Fit',
-    date: 'Понедельник, 18 ноября',
-    time: '18:00 - 19:30',
-    instructor: 'Анна Иванова',
-    hall: 'Волгина, 117А'
-  },
-  {
-    id: 2,
-    title: 'Растяжка',
-    date: 'Среда, 20 ноября',
-    time: '19:00 - 20:00',
-    instructor: 'Мария Петрова',
-    hall: 'Московское шоссе, 43'
-  }
-]
+const HomeIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+  </svg>
+)
+
+// Убраны моковые данные - используем только реальные из API
 
 export default function ProfilePage() {
   const router = useRouter()
   const [userName, setUserName] = useState('Пользователь')
   const [notifications, setNotifications] = useState(true)
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
+  const [bookings, setBookings] = useState<Booking[]>([])
+  const [allBookings, setAllBookings] = useState<Booking[]>([])
+  const [rentalBookings, setRentalBookings] = useState<RentalBooking[]>([])
+  const [loading, setLoading] = useState(true)
+  const [bookingsLoading, setBookingsLoading] = useState(true)
+  const [allBookingsLoading, setAllBookingsLoading] = useState(false)
+  const [rentalBookingsLoading, setRentalBookingsLoading] = useState(false)
+  const [showAllBookingsModal, setShowAllBookingsModal] = useState(false)
+  const [activeTab, setActiveTab] = useState<'active' | 'past'>('active')
 
   useEffect(() => {
     // Получаем данные пользователя из Telegram
@@ -76,11 +77,166 @@ export default function ProfilePage() {
         setUserName(user.first_name || 'Пользователь')
       }
     }
+
+    // Загружаем абонементы, записи и аренду пользователя
+    loadSubscriptions()
+    loadBookings()
+    loadRentalBookings()
   }, [])
+
+  const loadSubscriptions = async () => {
+    try {
+      setLoading(true)
+      
+      // В режиме разработки просто загружаем абонементы без проверки авторизации
+      const response = await subscriptionsAPI.getMy()
+      setSubscriptions(response.subscriptions)
+      console.log('✅ Загружено абонементов:', response.subscriptions.length)
+    } catch (error) {
+      console.error('❌ Ошибка загрузки абонементов:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadBookings = async () => {
+    try {
+      setBookingsLoading(true)
+      const response = await bookingsAPI.getMy()
+      setBookings(response.bookings)
+      console.log('✅ Загружено записей:', response.bookings.length)
+    } catch (error) {
+      console.error('❌ Ошибка загрузки записей:', error)
+    } finally {
+      setBookingsLoading(false)
+    }
+  }
+
+  const loadRentalBookings = async () => {
+    try {
+      setRentalBookingsLoading(true)
+      console.log('🔍 Загрузка заявок на аренду...')
+      const response = await rentalAPI.getMyBookings()
+      console.log('📦 Получены данные:', response)
+      
+      // Проверяем разные форматы ответа
+      let bookingsArray: RentalBooking[] = []
+      if (Array.isArray(response)) {
+        bookingsArray = response
+      } else if (response && typeof response === 'object' && 'bookings' in response) {
+        bookingsArray = Array.isArray((response as any).bookings) ? (response as any).bookings : []
+      } else if (response && typeof response === 'object' && 'rentals' in response) {
+        bookingsArray = Array.isArray((response as any).rentals) ? (response as any).rentals : []
+      }
+      
+      console.log('✅ Загружено заявок на аренду:', bookingsArray.length)
+      console.log('📊 Состояние rentalBookings перед обновлением:', rentalBookings.length, 'заявок')
+      bookingsArray.forEach((rental, idx) => {
+        console.log(`   Заявка ${idx + 1}: ID=${rental.id}, статус=${rental.status}, зал=${rental.hall_name || 'неизвестно'}, дата=${rental.start_time}, user_id=${rental.user_id}`)
+      })
+      setRentalBookings(bookingsArray)
+      console.log('📊 Состояние rentalBookings после обновления:', bookingsArray.length, 'заявок')
+    } catch (error) {
+      console.error('❌ Ошибка загрузки заявок на аренду:', error)
+      setRentalBookings([])
+    } finally {
+      setRentalBookingsLoading(false)
+    }
+  }
+
+  const canCancelBooking = (booking: Booking): { canCancel: boolean; reason?: string } => {
+    if (!booking.lesson_date || !booking.start_time) {
+      return { canCancel: false, reason: 'Недостаточно данных о занятии' }
+    }
+
+    const lessonDate = new Date(booking.lesson_date)
+    const [startHour, startMinute] = booking.start_time.split(':').map(Number)
+    
+    // Создаем дату и время начала занятия
+    const lessonDateTime = new Date(lessonDate)
+    lessonDateTime.setHours(startHour, startMinute, 0, 0)
+    
+    const now = new Date()
+    const isMorningLesson = startHour < 17 // Занятие до 17:00 считается утренним
+    
+    if (isMorningLesson) {
+      // Утреннее занятие: можно отменить до 21:00 предыдущего дня
+      const previousDay = new Date(lessonDate)
+      previousDay.setDate(previousDay.getDate() - 1)
+      previousDay.setHours(21, 0, 0, 0) // 21:00 предыдущего дня
+      
+      if (now >= previousDay) {
+        return { 
+          canCancel: false, 
+          reason: 'Отменить утреннее занятие можно только до 21:00 предыдущего дня' 
+        }
+      }
+    } else {
+      // Вечернее занятие: можно отменить не позднее чем за 4 часа до начала
+      const cancelDeadline = new Date(lessonDateTime)
+      cancelDeadline.setHours(cancelDeadline.getHours() - 4)
+      
+      if (now >= cancelDeadline) {
+        return { 
+          canCancel: false, 
+          reason: 'Отменить вечернее занятие можно не позднее чем за 4 часа до начала' 
+        }
+      }
+    }
+    
+    return { canCancel: true }
+  }
+
+  const loadAllBookings = async () => {
+    try {
+      setAllBookingsLoading(true)
+      const response = await bookingsAPI.getAllMy()
+      setAllBookings(response.bookings)
+      console.log('✅ Загружено всех записей:', response.bookings.length)
+    } catch (error) {
+      console.error('❌ Ошибка загрузки всех записей:', error)
+    } finally {
+      setAllBookingsLoading(false)
+    }
+  }
+
+  const handleShowAllBookings = () => {
+    setActiveTab('active') // Сбрасываем на вкладку "Активные" при открытии
+    setShowAllBookingsModal(true)
+    if (allBookings.length === 0) {
+      loadAllBookings()
+    }
+  }
+
+  const handleCancelBooking = async (bookingId: number) => {
+    const booking = bookings.find(b => b.id === bookingId) || allBookings.find(b => b.id === bookingId)
+    if (!booking) return
+    
+    const cancelCheck = canCancelBooking(booking)
+    if (!cancelCheck.canCancel) {
+      alert(`❌ ${cancelCheck.reason || 'Невозможно отменить запись'}`)
+      return
+    }
+    
+    if (!confirm('Вы уверены, что хотите отменить запись?')) return
+    
+    try {
+      await bookingsAPI.cancel(bookingId)
+      alert('✅ Запись отменена!')
+      // Перезагружаем данные
+      loadBookings()
+      loadSubscriptions()
+      if (showAllBookingsModal) {
+        loadAllBookings()
+      }
+    } catch (error: any) {
+      alert(`❌ ${error.message || 'Ошибка отмены записи'}`)
+    }
+  }
 
   return (
     <BeamsBackground intensity="medium">
-      <div className="min-h-screen">
+      <div className="min-h-screen pb-20 sm:pb-24 relative z-10">
         
         {/* Header */}
         <div className="sticky top-0 z-20 bg-black/40 backdrop-blur-xl border-b border-purple-500/20">
@@ -116,32 +272,45 @@ export default function ProfilePage() {
         {/* Content */}
         <div className="max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
           
-          {/* Абонемент */}
-          <div className="bg-purple-900/40 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-purple-500/20 p-4 sm:p-6 md:p-8 mb-4 sm:mb-6">
-            <h2 className="text-base sm:text-xl font-bold text-white mb-4 sm:mb-6 flex items-center gap-2">
+          {/* Абонементы */}
+          <div className="mb-6">
+            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
               <TicketIcon />
-              Мой абонемент
+              Мои абонементы
             </h2>
             
-            {/* Пустое состояние - нет абонемента */}
-            <div className="text-center py-6 sm:py-8">
-              <div className="w-14 sm:w-20 h-14 sm:h-20 mx-auto mb-3 sm:mb-4 rounded-full bg-purple-500/20 flex items-center justify-center">
-                <TicketIcon />
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="animate-spin w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full mx-auto"></div>
+                <p className="text-purple-200/70 mt-4">Загрузка...</p>
               </div>
-              <h3 className="text-sm sm:text-lg font-semibold text-white mb-2">
-                Абонемент не активен
-              </h3>
-              <p className="text-xs sm:text-base text-purple-200/70 mb-4 sm:mb-6 max-w-md mx-auto px-4">
-                Купите абонемент, чтобы начать заниматься в нашей студии
-              </p>
-              <Button
-                variant="default"
-                className="text-sm sm:text-base py-2.5 sm:py-3"
-                onClick={() => router.push('/prices')}
-              >
-                Посмотреть цены
-              </Button>
-            </div>
+            ) : subscriptions.length === 0 ? (
+              <div className="bg-purple-900/40 backdrop-blur-xl rounded-xl border border-purple-500/20 p-8">
+                <div className="text-center py-6">
+                  <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-purple-500/20 flex items-center justify-center">
+                    <TicketIcon />
+                  </div>
+                  <h3 className="text-lg font-semibold text-white mb-2">
+                    У вас пока нет абонементов
+                  </h3>
+                  <p className="text-purple-200/70 mb-6 max-w-md mx-auto">
+                    Купите абонемент, чтобы начать заниматься в нашей студии
+                  </p>
+                  <Button
+                    variant="default"
+                    onClick={() => router.push('/prices')}
+                  >
+                    Посмотреть абонементы
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {subscriptions.map((subscription) => (
+                  <SubscriptionCard key={subscription.id} subscription={subscription} />
+                ))}
+              </div>
+            )}
 
             {/* Активный абонемент (закомментировано для примера) */}
             {/* 
@@ -172,56 +341,101 @@ export default function ProfilePage() {
                 <CalendarIcon />
                 Мои занятия
               </h2>
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3"
-                onClick={() => router.push('/schedule')}
-              >
-                Записаться
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3"
+                  onClick={handleShowAllBookings}
+                >
+                  Все записи
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3"
+                  onClick={() => router.push('/schedule')}
+                >
+                  Записаться
+                </Button>
+              </div>
             </div>
             
-            {/* Список занятий */}
-            {mockUpcomingLessons.length > 0 ? (
+            {/* Список занятий - загружаем реальные данные */}
+            {bookingsLoading ? (
+              <div className="text-center py-8">
+                <div className="inline-block w-8 h-8 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"></div>
+              </div>
+            ) : bookings.length > 0 ? (
               <div className="space-y-2 sm:space-y-3">
-                {mockUpcomingLessons.map((lesson) => (
-                  <div
-                    key={lesson.id}
-                    className="bg-black/30 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-purple-500/20 hover:border-purple-400/40 transition-colors"
-                  >
-                    <div className="flex items-start justify-between mb-2 sm:mb-3">
-                      <div className="min-w-0 flex-1">
-                        <h3 className="text-sm sm:text-lg font-semibold text-white mb-1 truncate">
-                          {lesson.title}
+                {bookings.map((booking) => {
+                  const lessonDate = booking.lesson_date ? new Date(booking.lesson_date) : new Date()
+                  const dateStr = lessonDate.toLocaleDateString('ru-RU', { 
+                    day: 'numeric', 
+                    month: 'long',
+                    weekday: 'short'
+                  })
+                  
+                  return (
+                    <div
+                      key={booking.id}
+                      className="bg-black/30 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-purple-500/20 hover:border-purple-400/40 transition-colors"
+                    >
+                      <div className="mb-3 sm:mb-4">
+                        <h3 className="text-sm sm:text-lg font-semibold text-white mb-2 truncate">
+                          {booking.direction_name}
                         </h3>
-                        <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-purple-200/70">
+                        <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-purple-200/70 mb-2">
                           <ClockIcon />
-                          <span>{lesson.date}</span>
+                          <span>{dateStr}</span>
                         </div>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-purple-300 hover:text-white flex-shrink-0 p-1 sm:p-2"
-                      >
-                        <XIcon />
-                      </Button>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 text-xs sm:text-sm mb-3 sm:mb-4">
+                        <div className="text-purple-200 truncate">
+                          <span className="text-purple-200/70">Время:</span> {booking.start_time} - {booking.end_time}
+                        </div>
+                        <div className="text-purple-200 truncate">
+                          <span className="text-purple-200/70">Зал:</span> {booking.hall_name}
+                        </div>
+                        <div className="text-purple-200 sm:col-span-2 truncate">
+                          <span className="text-purple-200/70">Инструктор:</span> {booking.trainer_name}
+                        </div>
+                      </div>
+
+                      {(() => {
+                        const cancelCheck = canCancelBooking(booking)
+                        return cancelCheck.canCancel ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full sm:w-auto text-xs sm:text-sm border-red-500/30 text-red-400 hover:bg-red-500/20 hover:border-red-500/50 hover:text-red-300 transition-colors"
+                            onClick={() => handleCancelBooking(booking.id)}
+                          >
+                            Отменить запись
+                          </Button>
+                        ) : (
+                          <div className="w-full sm:w-auto">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled
+                              className="w-full sm:w-auto text-xs sm:text-sm border-gray-500/20 text-gray-500 cursor-not-allowed opacity-50"
+                              title={cancelCheck.reason || 'Невозможно отменить запись'}
+                            >
+                              Отменить запись
+                            </Button>
+                            {cancelCheck.reason && (
+                              <p className="text-xs text-gray-500/70 mt-1.5 text-center sm:text-left">
+                                {cancelCheck.reason}
+                              </p>
+                            )}
+                          </div>
+                        )
+                      })()}
                     </div>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 text-xs sm:text-sm">
-                      <div className="text-purple-200 truncate">
-                        <span className="text-purple-200/70">Время:</span> {lesson.time}
-                      </div>
-                      <div className="text-purple-200 truncate">
-                        <span className="text-purple-200/70">Зал:</span> {lesson.hall}
-                      </div>
-                      <div className="text-purple-200 sm:col-span-2 truncate">
-                        <span className="text-purple-200/70">Инструктор:</span> {lesson.instructor}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             ) : (
               <div className="text-center py-6 sm:py-8">
@@ -242,27 +456,145 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* Статистика */}
+          {/* Мои аренды */}
+          <div className="bg-purple-900/40 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-purple-500/20 p-4 sm:p-6 md:p-8 mb-4 sm:mb-6">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <h2 className="text-base sm:text-xl font-bold text-white flex items-center gap-2">
+                <HomeIcon />
+                Мои аренды
+              </h2>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3"
+                onClick={() => router.push('/rental')}
+              >
+                Забронировать
+              </Button>
+            </div>
+            
+            {rentalBookingsLoading ? (
+              <div className="text-center py-8">
+                <div className="inline-block w-8 h-8 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"></div>
+              </div>
+            ) : rentalBookings.length > 0 ? (
+              <div className="space-y-2 sm:space-y-3">
+                {rentalBookings.map((rental) => {
+                  const startTime = new Date(rental.start_time)
+                  const endTime = new Date(rental.end_time)
+                  const duration = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60))
+                  const dateStr = startTime.toLocaleDateString('ru-RU', { 
+                    day: 'numeric', 
+                    month: 'long',
+                    weekday: 'short'
+                  })
+                  
+                  return (
+                    <div
+                      key={rental.id}
+                      className="bg-black/30 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-purple-500/20 hover:border-purple-400/40 transition-colors"
+                    >
+                      <div className="mb-3 sm:mb-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="text-sm sm:text-lg font-semibold text-white truncate">
+                            {rental.hall_name}
+                          </h3>
+                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                            rental.status === 'confirmed' ? 'bg-green-500/20 text-green-400' :
+                            rental.status === 'cancelled' ? 'bg-red-500/20 text-red-400' :
+                            'bg-yellow-500/20 text-yellow-400'
+                          }`}>
+                            {rental.status === 'confirmed' ? 'Подтверждено' :
+                             rental.status === 'cancelled' ? 'Отменено' : 'Ожидание'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-purple-200/70 mb-2">
+                          <CalendarIcon />
+                          <span>{dateStr}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 text-xs sm:text-sm mb-3 sm:mb-4">
+                        <div className="text-purple-200 truncate">
+                          <span className="text-purple-200/70">Тип:</span> {rental.rental_type === 'hall' ? 'Аренда зала' : `Аренда ${rental.pole_count} ${rental.pole_count === 1 ? 'пилона' : 'пилонов'}`}
+                        </div>
+                        <div className="text-purple-200 truncate">
+                          <span className="text-purple-200/70">Время:</span> {startTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })} - {endTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                        <div className="text-purple-200 truncate">
+                          <span className="text-purple-200/70">Длительность:</span> {duration} {duration === 1 ? 'час' : duration < 5 ? 'часа' : 'часов'}
+                        </div>
+                        <div className="text-purple-200 truncate">
+                          <span className="text-purple-200/70">Стоимость:</span> {typeof rental.total_price === 'number' ? rental.total_price.toLocaleString('ru-RU') : rental.total_price} ₽
+                        </div>
+                        {rental.participants && (
+                          <div className="text-purple-200 sm:col-span-2 truncate">
+                            <span className="text-purple-200/70">Участников:</span> {rental.participants}
+                          </div>
+                        )}
+                      </div>
+                      
+                      {rental.comment && (
+                        <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-purple-800/20 rounded-lg">
+                          <p className="text-xs sm:text-sm text-purple-200/80">{rental.comment}</p>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-6 sm:py-8">
+                <div className="w-14 sm:w-16 h-14 sm:h-16 mx-auto mb-3 sm:mb-4 rounded-full bg-purple-500/20 flex items-center justify-center text-xl sm:text-2xl">
+                  🏠
+                </div>
+                <p className="text-xs sm:text-base text-purple-200/70 mb-3 sm:mb-4 px-4">
+                  У вас пока нет заявок на аренду
+                </p>
+                <Button
+                  variant="secondary"
+                  className="text-sm sm:text-base py-2.5 sm:py-3"
+                  onClick={() => router.push('/rental')}
+                >
+                  Забронировать зал или пилон
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Статистика - рассчитывается на основе реальных абонементов */}
           <div className="bg-purple-900/40 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-purple-500/20 p-4 sm:p-6 md:p-8 mb-4 sm:mb-6">
             <h2 className="text-base sm:text-xl font-bold text-white mb-4 sm:mb-6 flex items-center gap-2">
               <ChartIcon />
               Статистика
             </h2>
             
-            <div className="grid grid-cols-3 gap-3 sm:gap-4 text-center">
-              <div>
-                <div className="text-2xl sm:text-4xl font-bold text-white mb-1 sm:mb-2">12</div>
-                <div className="text-xs sm:text-sm text-purple-200/70">Посещено</div>
+            {subscriptions.length > 0 ? (
+              <div className="grid grid-cols-3 gap-3 sm:gap-4 text-center">
+                <div>
+                  <div className="text-2xl sm:text-4xl font-bold text-white mb-1 sm:mb-2">
+                    {subscriptions.reduce((sum, sub) => sum + ((sub.lesson_count || 0) - sub.lessons_remaining), 0)}
+                  </div>
+                  <div className="text-xs sm:text-sm text-purple-200/70">Использовано</div>
+                </div>
+                <div>
+                  <div className="text-2xl sm:text-4xl font-bold text-purple-300 mb-1 sm:mb-2">
+                    {subscriptions.filter(sub => sub.status === 'confirmed' && sub.is_active).reduce((sum, sub) => sum + sub.lessons_remaining, 0)}
+                  </div>
+                  <div className="text-xs sm:text-sm text-purple-200/70">Доступно</div>
+                </div>
+                <div>
+                  <div className="text-2xl sm:text-4xl font-bold text-purple-400 mb-1 sm:mb-2">
+                    {subscriptions.reduce((sum, sub) => sum + (sub.lesson_count || 0), 0)}
+                  </div>
+                  <div className="text-xs sm:text-sm text-purple-200/70">Всего куплено</div>
+                </div>
               </div>
-              <div>
-                <div className="text-2xl sm:text-4xl font-bold text-purple-300 mb-1 sm:mb-2">2</div>
-                <div className="text-xs sm:text-sm text-purple-200/70">Запланировано</div>
+            ) : (
+              <div className="text-center py-8 text-purple-200/70">
+                Статистика появится после покупки абонемента
               </div>
-              <div>
-                <div className="text-2xl sm:text-4xl font-bold text-purple-400 mb-1 sm:mb-2">8</div>
-                <div className="text-xs sm:text-sm text-purple-200/70">Осталось</div>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Настройки */}
@@ -327,6 +659,175 @@ export default function ProfilePage() {
 
         </div>
       </div>
+
+      {/* Модальное окно со всеми записями */}
+      {showAllBookingsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-purple-900/95 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-purple-500/30 w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Заголовок модального окна */}
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-purple-500/20">
+              <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                <CalendarIcon />
+                Все мои записи
+              </h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-purple-300 hover:text-white"
+                onClick={() => setShowAllBookingsModal(false)}
+              >
+                <XIcon />
+              </Button>
+            </div>
+
+            {/* Вкладки */}
+            <div className="flex border-b border-purple-500/20">
+              <button
+                onClick={() => setActiveTab('active')}
+                className={`flex-1 px-4 py-3 text-sm sm:text-base font-medium transition-colors ${
+                  activeTab === 'active'
+                    ? 'text-white border-b-2 border-purple-400 bg-purple-500/10'
+                    : 'text-purple-300/70 hover:text-purple-200'
+                }`}
+              >
+                Активные
+              </button>
+              <button
+                onClick={() => setActiveTab('past')}
+                className={`flex-1 px-4 py-3 text-sm sm:text-base font-medium transition-colors ${
+                  activeTab === 'past'
+                    ? 'text-white border-b-2 border-purple-400 bg-purple-500/10'
+                    : 'text-purple-300/70 hover:text-purple-200'
+                }`}
+              >
+                Прошедшие
+              </button>
+            </div>
+
+            {/* Содержимое модального окна */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+              {allBookingsLoading ? (
+                <div className="text-center py-8">
+                  <div className="inline-block w-8 h-8 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"></div>
+                </div>
+              ) : (() => {
+                // Фильтруем записи по статусу (только confirmed) и по дате
+                const now = new Date()
+                now.setHours(0, 0, 0, 0)
+                
+                const filteredBookings = allBookings.filter(booking => {
+                  if (booking.status !== 'confirmed') return false // Не показываем отмененные
+                  
+                  const lessonDate = booking.lesson_date ? new Date(booking.lesson_date) : new Date()
+                  lessonDate.setHours(0, 0, 0, 0)
+                  
+                  if (activeTab === 'active') {
+                    return lessonDate >= now
+                  } else {
+                    return lessonDate < now
+                  }
+                })
+
+                if (filteredBookings.length > 0) {
+                  return (
+                    <div className="space-y-3 sm:space-y-4">
+                      {filteredBookings.map((booking) => {
+                        const lessonDate = booking.lesson_date ? new Date(booking.lesson_date) : new Date()
+                        const dateStr = lessonDate.toLocaleDateString('ru-RU', { 
+                          day: 'numeric', 
+                          month: 'long',
+                          year: 'numeric',
+                          weekday: 'short'
+                        })
+                        const isPast = activeTab === 'past'
+                        
+                        return (
+                          <div
+                            key={booking.id}
+                            className={`bg-black/30 rounded-lg sm:rounded-xl p-3 sm:p-4 border transition-colors ${
+                              isPast 
+                                ? 'border-gray-500/20 opacity-70' 
+                                : 'border-purple-500/20 hover:border-purple-400/40'
+                            }`}
+                          >
+                            <div className="mb-3 sm:mb-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <h3 className="text-sm sm:text-lg font-semibold text-white truncate">
+                                  {booking.direction_name}
+                                </h3>
+                              </div>
+                              <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-purple-200/70">
+                                <ClockIcon />
+                                <span>{dateStr}</span>
+                              </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 text-xs sm:text-sm mb-3 sm:mb-4">
+                              <div className="text-purple-200 truncate">
+                                <span className="text-purple-200/70">Время:</span> {booking.start_time} - {booking.end_time}
+                              </div>
+                              <div className="text-purple-200 truncate">
+                                <span className="text-purple-200/70">Зал:</span> {booking.hall_name}
+                              </div>
+                              <div className="text-purple-200 sm:col-span-2 truncate">
+                                <span className="text-purple-200/70">Инструктор:</span> {booking.trainer_name}
+                              </div>
+                            </div>
+
+                            {!isPast && (() => {
+                              const cancelCheck = canCancelBooking(booking)
+                              return cancelCheck.canCancel ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full sm:w-auto text-xs sm:text-sm border-red-500/30 text-red-400 hover:bg-red-500/20 hover:border-red-500/50 hover:text-red-300 transition-colors"
+                                  onClick={() => handleCancelBooking(booking.id)}
+                                >
+                                  Отменить запись
+                                </Button>
+                              ) : (
+                                <div className="w-full sm:w-auto">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled
+                                    className="w-full sm:w-auto text-xs sm:text-sm border-gray-500/20 text-gray-500 cursor-not-allowed opacity-50"
+                                    title={cancelCheck.reason || 'Невозможно отменить запись'}
+                                  >
+                                    Отменить запись
+                                  </Button>
+                                  {cancelCheck.reason && (
+                                    <p className="text-xs text-gray-500/70 mt-1.5 text-center sm:text-left">
+                                      {cancelCheck.reason}
+                                    </p>
+                                  )}
+                                </div>
+                              )
+                            })()}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )
+                } else {
+                  return (
+                    <div className="text-center py-6 sm:py-8">
+                      <div className="w-14 sm:w-16 h-14 sm:h-16 mx-auto mb-3 sm:mb-4 rounded-full bg-purple-500/20 flex items-center justify-center text-xl sm:text-2xl">
+                        📝
+                      </div>
+                      <p className="text-xs sm:text-base text-purple-200/70 px-4">
+                        {activeTab === 'active' 
+                          ? 'У вас нет активных записей на занятия'
+                          : 'У вас нет прошедших записей'}
+                      </p>
+                    </div>
+                  )
+                }
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
     </BeamsBackground>
   )
 }

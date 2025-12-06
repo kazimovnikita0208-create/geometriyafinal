@@ -1,47 +1,34 @@
-/**
- * Конфигурация Telegram Bot
- */
+const TelegramBot = require('node-telegram-bot-api');
 
-require('dotenv').config();
+const BOT_TOKEN = process.env.BOT_TOKEN;
 
-const config = {
-  botToken: process.env.BOT_TOKEN,
-  miniAppUrl: process.env.MINI_APP_URL || 'http://localhost:3000',
-  
-  // Опции для бота
-  botOptions: {
-    polling: true,
-    // Можно добавить webhook для продакшена
-    // webhook: {
-    //   port: process.env.WEBHOOK_PORT || 8443,
-    //   host: process.env.WEBHOOK_HOST || '0.0.0.0'
-    // }
-  },
-  
-  // Правила отмены записей
-  cancellationRules: {
-    // За сколько часов можно отменить вечернее занятие
-    eveningHoursBefore: 4,
-    // До какого часа предыдущего дня можно отменить дневное
-    morningDeadlineHour: 21,
-    // Начало и конец дневных занятий
-    morningClassesStart: 10,
-    morningClassesEnd: 15
-  },
-  
-  // Настройки уведомлений
-  notifications: {
-    // За сколько часов отправлять напоминание
-    reminderHoursBefore: 2,
-    // За сколько дней предупреждать об истечении абонемента
-    subscriptionExpiryWarningDays: 3
-  }
-};
-
-// Валидация конфигурации
-if (!config.botToken) {
-  throw new Error('❌ BOT_TOKEN не указан в .env файле');
+if (!BOT_TOKEN) {
+  console.warn('⚠️  BOT_TOKEN не найден в переменных окружения');
 }
 
-module.exports = config;
+// Создаем бота без polling (будем использовать только для отправки сообщений)
+const bot = BOT_TOKEN ? new TelegramBot(BOT_TOKEN, { polling: false }) : null;
 
+// Получаем список ID админов
+const getAdminIds = () => {
+  const adminIds = process.env.ADMIN_TELEGRAM_IDS;
+  if (!adminIds) return [];
+  
+  return adminIds
+    .split(',')
+    .map(id => parseInt(id.trim()))
+    .filter(id => !isNaN(id));
+};
+
+// Проверка, является ли пользователь админом
+const isAdmin = (telegramId) => {
+  const adminIds = getAdminIds();
+  return adminIds.includes(parseInt(telegramId));
+};
+
+module.exports = {
+  bot,
+  BOT_TOKEN,
+  getAdminIds,
+  isAdmin
+};

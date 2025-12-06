@@ -14,6 +14,9 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  background: linear-gradient(to bottom, #1a0b2e, #2d1b4e, #1a0b2e);
+  background-attachment: fixed;
+  min-height: 100vh;
 }
 
 /* Убираем синюю подсветку при тапе на мобильных */
@@ -71,8 +74,18 @@ body {
 }
 
 /* Telegram WebApp fix */
-html, body {
+html {
   overscroll-behavior: none;
+  background: linear-gradient(to bottom, #1a0b2e, #2d1b4e, #1a0b2e);
+  background-attachment: fixed;
+  min-height: 100vh;
+  height: 100%;
+}
+
+body {
+  overscroll-behavior: none;
+  background: transparent; /* Прозрачный, чтобы видеть фон через BeamsBackground */
+  min-height: 100vh;
 }
 
 /* Performance optimization */

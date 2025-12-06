@@ -62,12 +62,6 @@ const MENU_ITEMS = [
     description: 'Выбрать тариф',
     path: '/prices',
   },
-  {
-    Icon: UserIcon,
-    title: 'Личный кабинет',
-    description: 'Мои занятия',
-    path: '/profile',
-  }
 ]
 
 export default function Home() {
@@ -75,11 +69,13 @@ export default function Home() {
 
   useEffect(() => {
     // Инициализация Telegram WebApp (если доступен)
+    // Авторизация теперь происходит автоматически через AuthProvider
     if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
       const tg = (window as any).Telegram.WebApp
       tg.ready()
       tg.expand()
       tg.setHeaderColor('#5833b6')
+      tg.setBackgroundColor('#000000')
     }
   }, [])
 
@@ -94,7 +90,7 @@ export default function Home() {
 
   return (
     <BeamsBackground intensity="medium">
-      <main className="min-h-screen relative flex flex-col">
+      <main className="min-h-screen relative flex flex-col z-10">
         
         {/* Hero Section - Responsive для всех устройств */}
         <div className="flex-1 flex items-center justify-center px-3 sm:px-6 py-4 sm:py-12">
@@ -124,7 +120,7 @@ export default function Home() {
               </div>
 
               {/* Menu Grid - Responsive: 1 колонка на мобильных, 2 на больших экранах */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4 mt-6 sm:mt-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4 mt-6 sm:mt-8 pb-20 sm:pb-24">
                 {MENU_ITEMS.map((item) => {
                   const Icon = item.Icon
                   return (

@@ -1,0 +1,214 @@
+// Prisma Schema для студии танцев "Геометрия"
+// Database: SQLite
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Модель пользователя
+model User {
+  id                   Int               @id @default(autoincrement())
+  telegramId           BigInt            @unique @map("telegram_id")
+  username             String?
+  firstName            String?           @map("first_name")
+  lastName             String?           @map("last_name")
+  phone                String?
+  isActive             Boolean           @default(true) @map("is_active")
+  notificationsEnabled Boolean           @default(true) @map("notifications_enabled")
+  isAdmin              Boolean           @default(false) @map("is_admin")
+  createdAt            DateTime          @default(now()) @map("created_at")
+  updatedAt            DateTime          @updatedAt @map("updated_at")
+
+  subscriptions  Subscription[]
+  bookings       Booking[]
+  rentalBookings RentalBooking[]
+  notifications  Notification[]
+
+  @@map("users")
+}
+
+// Модель залов
+model Hall {
+  id           Int             @id @default(autoincrement())
+  name         String
+  address      String
+  capacity     Int             @default(6)
+  hasPoles     Boolean         @default(true) @map("has_poles")
+  poleCount    Int             @default(6) @map("pole_count")
+  pricePerHour Float           @map("price_per_hour")
+  isActive     Boolean         @default(true) @map("is_active")
+
+  lessons        Lesson[]
+  rentalBookings RentalBooking[]
+
+  @@map("halls")
+}
+
+// Модель направлений
+model Direction {
+  id          Int      @id @default(autoincrement())
+  name        String
+  slug        String   @unique
+  description String?
+  tagline     String?
+  features    String?  // JSON array
+  levels      String?  // JSON array
+  color       String   @default("#5833b6")
+  isActive    Boolean  @default(true) @map("is_active")
+
+  lessons Lesson[]
+
+  @@map("directions")
+}
+
+// Модель тренеров
+model Trainer {
+  id         Int      @id @default(autoincrement())
+  name       String
+  email      String?
+  phone      String?
+  directions String?  // JSON array of direction IDs
+  bio        String?
+  isActive   Boolean  @default(true) @map("is_active")
+
+  lessons Lesson[]
+
+  @@map("trainers")
+}
+
+// Модель типов абонементов
+model SubscriptionType {
+  id           Int      @id @default(autoincrement())
+  category     String   // "КЛАССИЧЕСКИЙ", "ТОЛЬКО ФИТНЕС", "КОМБО-АБОНЕМЕНТ"
+  name         String   // "8 занятий", "4 занятия", etc.
+  lessonCount  Int      @map("lesson_count")
+  validityDays Int      @default(30) @map("validity_days")
+  price        Float
+  description  String?
+  isActive     Boolean  @default(true) @map("is_active")
+
+  subscriptions Subscription[]
+
+  @@map("subscription_types")
+}
+
+// Модель абонементов пользователей
+model Subscription {
+  id                 Int              @id @default(autoincrement())
+  userId             Int              @map("user_id")
+  subscriptionTypeId Int              @map("subscription_type_id")
+  lessonsRemaining   Int              @map("lessons_remaining")
+  validFrom          DateTime         @map("valid_from")
+  validUntil         DateTime         @map("valid_until")
+  bookingType        String           @default("flexible") @map("booking_type") // "flexible" | "automatic"
+  autoDirection      String?          @map("auto_direction")                     // для automatic booking
+  autoWeekdays       String?          @map("auto_weekdays")                      // JSON array
+  status             String           @default("pending")                        // "pending", "confirmed", "expired"
+  isActive           Boolean          @default(true) @map("is_active")
+  createdAt          DateTime         @default(now()) @map("created_at")
+
+  user             User             @relation(fields: [userId], references: [id])
+  subscriptionType SubscriptionType @relation(fields: [subscriptionTypeId], references: [id])
+  bookings         Booking[]
+
+  @@map("subscriptions")
+}
+
+// Модель занятий (расписание)
+model Lesson {
+  id           Int       @id @default(autoincrement())
+  hallId       Int       @map("hall_id")
+  directionId  Int       @map("direction_id")
+  trainerId    Int       @map("trainer_id")
+  dayOfWeek    Int       @map("day_of_week")    // 0-6 (Воскресенье-Суббота)
+  startTime    String    @map("start_time")     // "18:00"
+  endTime      String    @map("end_time")       // "19:30"
+  capacity     Int       @default(6)
+  isRecurring  Boolean   @default(true) @map("is_recurring")
+  specificDate DateTime? @map("specific_date")  // Для разовых занятий
+  description  String?
+  isActive     Boolean   @default(true) @map("is_active")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  hall      Hall      @relation(fields: [hallId], references: [id])
+  direction Direction @relation(fields: [directionId], references: [id])
+  trainer   Trainer   @relation(fields: [trainerId], references: [id])
+  bookings  Booking[]
+
+  @@map("lessons")
+}
+
+// Модель записей на занятия
+model Booking {
+  id                 Int       @id @default(autoincrement())
+  userId             Int       @map("user_id")
+  lessonId           Int       @map("lesson_id")
+  subscriptionId     Int       @map("subscription_id")
+  bookingDate        DateTime  @map("booking_date")        // Конкретная дата занятия
+  status             String    @default("confirmed")       // "confirmed", "cancelled", "completed"
+  bookedAt           DateTime  @default(now()) @map("booked_at")
+  cancelledAt        DateTime? @map("cancelled_at")
+  cancellationReason String?   @map("cancellation_reason")
+
+  user         User         @relation(fields: [userId], references: [id])
+  lesson       Lesson       @relation(fields: [lessonId], references: [id])
+  subscription Subscription @relation(fields: [subscriptionId], references: [id])
+
+  @@map("bookings")
+}
+
+// Модель аренды залов/пилонов
+model RentalBooking {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @map("user_id")
+  hallId       Int      @map("hall_id")
+  rentalType   String   @map("rental_type")   // "hall" | "pole"
+  poleCount    Int?     @map("pole_count")
+  startTime    DateTime @map("start_time")
+  endTime      DateTime @map("end_time")
+  participants Int?
+  totalPrice   Float    @map("total_price")
+  comment      String?
+  status       String   @default("pending")   // "pending", "confirmed", "cancelled"
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+  hall Hall @relation(fields: [hallId], references: [id])
+
+  @@map("rental_bookings")
+}
+
+// Модель уведомлений
+model Notification {
+  id           Int       @id @default(autoincrement())
+  userId       Int?      @map("user_id")       // null для массовых рассылок
+  type         String                          // "booking_reminder", "subscription_expiry", "booking_confirmed", etc.
+  title        String
+  message      String
+  isSent       Boolean   @default(false) @map("is_sent")
+  sentAt       DateTime? @map("sent_at")
+  scheduledFor DateTime? @map("scheduled_for")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
+// Модель настроек системы
+model Setting {
+  id          Int      @id @default(autoincrement())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}
+
+

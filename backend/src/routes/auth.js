@@ -1,126 +1,130 @@
-/**
- * Роуты для авторизации через Telegram WebApp
- */
-
 const express = require('express');
 const router = express.Router();
-
-const User = require('../models/User');
-const { extractUserData } = require('../services/telegramAuth');
-const { generateToken } = require('../middleware/auth');
-const telegramConfig = require('../config/telegram');
+const db = require('../config/database');
+const { telegramAuthMiddleware } = require('../middleware/telegramAuth');
+const { generateToken, authMiddleware } = require('../middleware/auth');
+const { isAdmin } = require('../config/telegram');
 
 /**
- * POST /api/v1/auth/telegram
- * Авторизация через Telegram WebApp initData
- * 
- * Body: { initData: string }
- * Response: { token: string, user: object }
+ * POST /api/auth/login
+ * Аутентификация через Telegram Web App
  */
-router.post('/telegram', async (req, res) => {
+router.post('/login', telegramAuthMiddleware, async (req, res) => {
   try {
-    const { initData } = req.body;
-    
-    if (!initData) {
-      return res.status(400).json({ 
-        error: 'Отсутствует initData',
-        code: 'NO_INIT_DATA'
-      });
+    const telegramUser = req.telegramUser;
+
+    // Ищем пользователя
+    let user = db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(telegramUser.id);
+
+    if (!user) {
+      // Создаем нового пользователя
+      const insertUser = db.prepare(`
+        INSERT INTO users (telegram_id, username, first_name, last_name, is_admin, is_active, notifications_enabled)
+        VALUES (?, ?, ?, ?, ?, 1, 1)
+      `);
+      
+      const result = insertUser.run(
+        telegramUser.id,
+        telegramUser.username || null,
+        telegramUser.first_name || null,
+        telegramUser.last_name || null,
+        isAdmin(telegramUser.id) ? 1 : 0
+      );
+
+      user = db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
+      console.log(`✅ Создан новый пользователь: ${user.first_name} (ID: ${user.id})`);
+    } else {
+      // Обновляем данные существующего пользователя
+      db.prepare(`
+        UPDATE users 
+        SET username = ?, first_name = ?, last_name = ?, is_admin = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(
+        telegramUser.username || user.username,
+        telegramUser.first_name || user.first_name,
+        telegramUser.last_name || user.last_name,
+        isAdmin(telegramUser.id) ? 1 : 0,
+        user.id
+      );
+
+      user = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id);
+      console.log(`✅ Пользователь вошел: ${user.first_name} (ID: ${user.id})`);
     }
-    
-    // Валидация и извлечение данных пользователя
-    const userData = extractUserData(initData, telegramConfig.botToken);
-    
-    if (!userData) {
-      return res.status(401).json({ 
-        error: 'Невалидные данные от Telegram',
-        code: 'INVALID_INIT_DATA'
-      });
-    }
-    
-    // Создание или обновление пользователя в БД
-    const user = User.upsert(userData);
-    
-    // Генерация JWT токена
+
+    // Генерируем JWT токен
     const token = generateToken({
-      userId: user.id,
-      telegramId: user.telegram_id
+      id: user.id,
+      telegramId: user.telegram_id,
+      isAdmin: user.is_admin === 1
     });
     
-    // Получение статистики пользователя
-    const stats = User.getStats(user.id);
-    
+    // Возвращаем токен и данные пользователя
     res.json({
-      success: true,
       token,
       user: {
         id: user.id,
-        telegram_id: user.telegram_id,
+        telegramId: user.telegram_id.toString(),
         username: user.username,
-        first_name: user.first_name,
-        last_name: user.last_name,
+        firstName: user.first_name,
+        lastName: user.last_name,
         phone: user.phone,
-        notifications_enabled: user.notifications_enabled,
-        created_at: user.created_at,
-        stats
+        isAdmin: user.is_admin === 1,
+        notificationsEnabled: user.notifications_enabled === 1,
+        createdAt: user.created_at
       }
     });
-    
   } catch (error) {
-    console.error('❌ Ошибка авторизации:', error);
+    console.error('Login error:', error);
     res.status(500).json({ 
-      error: 'Ошибка сервера при авторизации',
-      code: 'SERVER_ERROR'
+      error: 'Internal Server Error',
+      message: 'Ошибка при авторизации' 
     });
   }
 });
 
 /**
- * GET /api/v1/auth/verify
- * Проверка валидности токена
+ * GET /api/auth/me
+ * Получить текущего пользователя
  */
-router.get('/verify', (req, res) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  
-  if (!token) {
-    return res.status(401).json({ 
-      valid: false,
-      error: 'Токен не предоставлен'
-    });
-  }
-  
+router.get('/me', authMiddleware, (req, res) => {
   try {
-    const jwt = require('jsonwebtoken');
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    const user = User.findById(decoded.userId);
-    
-    if (!user || !user.is_active) {
-      return res.status(401).json({ 
-        valid: false,
-        error: 'Пользователь не найден или неактивен'
-      });
-    }
+    const user = req.user;
     
     res.json({
-      valid: true,
       user: {
         id: user.id,
-        telegram_id: user.telegram_id,
+        telegramId: user.telegram_id.toString(),
         username: user.username,
-        first_name: user.first_name,
-        last_name: user.last_name
+        firstName: user.first_name,
+        lastName: user.last_name,
+        phone: user.phone,
+        isAdmin: user.is_admin === 1,
+        notificationsEnabled: user.notifications_enabled === 1,
+        isActive: user.is_active === 1,
+        createdAt: user.created_at,
+        updatedAt: user.updated_at
       }
     });
-    
   } catch (error) {
-    res.status(401).json({ 
-      valid: false,
-      error: 'Невалидный токен'
+    console.error('Get current user error:', error);
+    res.status(500).json({ 
+      error: 'Internal Server Error',
+      message: 'Ошибка при получении данных пользователя' 
     });
   }
 });
 
-module.exports = router;
+/**
+ * POST /api/auth/logout
+ * Выход (на самом деле просто информационный endpoint, т.к. JWT stateless)
+ */
+router.post('/logout', authMiddleware, (req, res) => {
+  console.log(`✅ Пользователь вышел: ${req.user.firstName} (ID: ${req.user.id})`);
+  
+  res.json({ 
+    message: 'Logged out successfully',
+    info: 'JWT токен остается валидным до истечения срока действия. Удалите его на клиенте.'
+  });
+});
 
+module.exports = router;

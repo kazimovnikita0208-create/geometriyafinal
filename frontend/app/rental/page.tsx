@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { BeamsBackground } from '@/components/ui/beams-background'
 import { Button } from '@/components/ui/button'
+import api, { hallsAPI, Hall, pricesAPI, rentalAPI } from '@/lib/api'
 
 // Иконки
 const ChevronLeftIcon = () => (
@@ -61,25 +62,7 @@ const CheckIcon = () => (
   </svg>
 )
 
-// Залы
-const halls = [
-  {
-    id: 'volgina',
-    name: 'Зал на Волгина, 117А',
-    description: 'Просторный зал с 4 пилонами, зеркалами и профессиональным покрытием',
-    capacity: '15 человек',
-    features: ['4 пилона', 'Зеркала', 'Раздевалка', 'Кондиционер'],
-    pricePerHour: '1500'
-  },
-  {
-    id: 'moskovskoye',
-    name: 'Зал в ТОЦ "Охотный ряд"',
-    description: 'Уютный зал с 3 пилонами, идеально подходит для небольших групп',
-    capacity: '10 человек',
-    features: ['3 пилона', 'Зеркала', 'Раздевалка', 'Кондиционер'],
-    pricePerHour: '1200'
-  }
-]
+// Залы будут загружаться из API
 
 // Доступное время
 const availableTimes = [
@@ -101,28 +84,155 @@ export default function RentalPage() {
     participants: '',
     comment: ''
   })
+  const [availableTimes, setAvailableTimes] = useState<string[]>([])
+  const [loadingTimes, setLoadingTimes] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [halls, setHalls] = useState<Hall[]>([])
+  const [loadingHalls, setLoadingHalls] = useState(false)
+  const [polePricePerHour, setPolePricePerHour] = useState<number>(500)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Загружаем залы при монтировании компонента
+  useEffect(() => {
+    loadHalls()
+  }, [])
+
+  // Загружаем доступное время при изменении даты, зала или типа аренды
+  useEffect(() => {
+    if (formData.date && formData.hall) {
+      loadAvailableTimes()
+    } else {
+      setAvailableTimes([])
+    }
+  }, [formData.date, formData.hall, rentalType])
+
+  const loadHalls = async () => {
+    try {
+      setLoadingHalls(true)
+      const [hallsResponse, pricesResponse] = await Promise.all([
+        hallsAPI.getAll(),
+        pricesAPI.get().catch(() => null)
+      ])
+      setHalls(hallsResponse.halls || [])
+      if (pricesResponse) {
+        setPolePricePerHour(pricesResponse.polePricePerHour)
+      }
+    } catch (error) {
+      console.error('Error loading halls:', error)
+      setHalls([])
+    } finally {
+      setLoadingHalls(false)
+    }
+  }
+
+  const loadAvailableTimes = async () => {
+    if (!formData.date || !formData.hall) {
+      setAvailableTimes([])
+      return
+    }
+    
+    const hallId = parseInt(formData.hall)
+    if (isNaN(hallId)) {
+      console.error('Некорректный ID зала:', formData.hall)
+      setAvailableTimes([])
+      return
+    }
+    
+    setLoadingTimes(true)
+    try {
+      console.log(`🔍 Запрос доступного времени: зал ${hallId}, дата ${formData.date}, тип ${rentalType}`)
+      const response = await rentalAPI.getAvailability(
+        hallId,
+        formData.date,
+        rentalType
+      )
+      console.log(`✅ Получено доступное время:`, response.availableTimes)
+      setAvailableTimes(response.availableTimes || [])
+      // Если выбранное время недоступно, сбрасываем его
+      if (formData.time && !response.availableTimes.includes(formData.time)) {
+        setFormData({ ...formData, time: '' })
+      }
+    } catch (error: any) {
+      console.error('❌ Ошибка загрузки доступного времени:', error)
+      alert(error.message || 'Ошибка при загрузке доступного времени')
+      setAvailableTimes([])
+    } finally {
+      setLoadingTimes(false)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('Rental booking:', { type: rentalType, ...formData })
-    alert('Спасибо! Ваша заявка на аренду принята. Мы свяжемся с вами в ближайшее время.')
-    // Очистка формы
-    setFormData({
-      name: '',
-      phone: '',
-      date: '',
-      time: '',
-      duration: '1',
-      hall: '',
-      poleCount: '1',
-      participants: '',
-      comment: ''
-    })
+    
+    if (!formData.date || !formData.time || !formData.hall) {
+      alert('Заполните все обязательные поля')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const bookingData: any = {
+        hallId: parseInt(formData.hall),
+        rentalType,
+        date: formData.date,
+        time: formData.time,
+        duration: formData.duration
+      }
+      
+      // Добавляем имя и телефон, если указаны
+      if (formData.name && formData.name.trim()) {
+        bookingData.name = formData.name.trim()
+      }
+      if (formData.phone && formData.phone.trim()) {
+        bookingData.phone = formData.phone.trim()
+      }
+      
+      // Добавляем poleCount только для аренды пилона
+      if (rentalType === 'pole') {
+        const poleCount = parseInt(formData.poleCount)
+        if (isNaN(poleCount) || poleCount < 1) {
+          alert('Укажите корректное количество пилонов')
+          setSubmitting(false)
+          return
+        }
+        bookingData.poleCount = poleCount
+      }
+      
+      // Добавляем опциональные поля
+      if (formData.participants) {
+        bookingData.participants = parseInt(formData.participants)
+      }
+      if (formData.comment && formData.comment.trim()) {
+        bookingData.comment = formData.comment.trim()
+      }
+      
+      console.log('📤 Отправка заявки на аренду:', bookingData)
+      await rentalAPI.createBooking(bookingData)
+      
+      alert('Спасибо! Ваша заявка на аренду принята. Мы свяжемся с вами в ближайшее время.')
+      // Очистка формы
+      setFormData({
+        name: '',
+        phone: '',
+        date: '',
+        time: '',
+        duration: '1',
+        hall: '',
+        poleCount: '1',
+        participants: '',
+        comment: ''
+      })
+      setAvailableTimes([])
+    } catch (error: any) {
+      console.error('Error creating rental booking:', error)
+      alert(error.message || 'Ошибка при создании заявки. Попробуйте еще раз.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
     <BeamsBackground intensity="medium">
-      <div className="min-h-screen">
+      <div className="min-h-screen pb-20 sm:pb-24 relative z-10">
         
         {/* Header */}
         <div className="sticky top-0 z-20 bg-black/40 backdrop-blur-xl border-b border-purple-500/20">
@@ -156,21 +266,21 @@ export default function RentalPage() {
           <div className="flex gap-2 sm:gap-3 mb-4 sm:mb-6">
             <Button
               variant={rentalType === 'hall' ? 'default' : 'outline'}
-              className="flex-1 text-sm sm:text-base py-2.5 sm:py-3"
+              className="flex-1 text-xs sm:text-sm md:text-base py-2.5 sm:py-3 min-h-[44px]"
               onClick={() => setRentalType('hall')}
             >
               <HomeIcon />
-              <span className="ml-2">Аренда зала</span>
+              <span className="ml-1 sm:ml-2">Аренда зала</span>
             </Button>
             <Button
               variant={rentalType === 'pole' ? 'default' : 'outline'}
-              className="flex-1 text-sm sm:text-base py-2.5 sm:py-3"
+              className="flex-1 text-xs sm:text-sm md:text-base py-2.5 sm:py-3 min-h-[44px]"
               onClick={() => setRentalType('pole')}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10M12 3v18" />
               </svg>
-              <span className="ml-2">Аренда пилона</span>
+              <span className="ml-1 sm:ml-2">Аренда пилона</span>
             </Button>
           </div>
 
@@ -182,36 +292,58 @@ export default function RentalPage() {
                 <h2 className="text-lg sm:text-2xl font-bold text-white mb-4 sm:mb-6">
                   Наши залы
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                  {halls.map((hall) => (
-                    <div
-                      key={hall.id}
-                      className="bg-purple-800/30 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-purple-500/20"
-                    >
-                      <h3 className="text-sm sm:text-lg font-bold text-white mb-2">
-                        {hall.name}
-                      </h3>
-                      <p className="text-xs sm:text-sm text-purple-200/80 mb-3">
-                        {hall.description}
-                      </p>
-                      <div className="space-y-1.5 sm:space-y-2 mb-3">
-                        <div className="flex items-center gap-2 text-xs sm:text-sm text-purple-200/70">
-                          <UsersIcon />
-                          <span>Вместимость: {hall.capacity}</span>
-                        </div>
-                        {hall.features.map((feature, idx) => (
-                          <div key={idx} className="flex items-center gap-2 text-xs sm:text-sm text-purple-200/80">
-                            <CheckIcon />
-                            <span>{feature}</span>
+                {loadingHalls ? (
+                  <div className="text-center py-8">
+                    <div className="inline-block w-8 h-8 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"></div>
+                  </div>
+                ) : halls.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                    {halls.map((hall) => (
+                      <div
+                        key={hall.id}
+                        className="bg-purple-800/30 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-purple-500/20"
+                      >
+                        <h3 className="text-sm sm:text-lg font-bold text-white mb-2">
+                          {hall.name}
+                        </h3>
+                        <p className="text-xs sm:text-sm text-purple-200/80 mb-3">
+                          {hall.address}
+                        </p>
+                        <div className="space-y-1.5 sm:space-y-2 mb-3">
+                          <div className="flex items-center gap-2 text-xs sm:text-sm text-purple-200/70">
+                            <UsersIcon />
+                            <span>Вместимость: {hall.capacity} человек</span>
                           </div>
-                        ))}
+                          {hall.hasPoles && (
+                            <div className="flex items-center gap-2 text-xs sm:text-sm text-purple-200/80">
+                              <CheckIcon />
+                              <span>{hall.poleCount} пилонов</span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2 text-xs sm:text-sm text-purple-200/80">
+                            <CheckIcon />
+                            <span>Зеркала</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs sm:text-sm text-purple-200/80">
+                            <CheckIcon />
+                            <span>Раздевалка</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs sm:text-sm text-purple-200/80">
+                            <CheckIcon />
+                            <span>Кондиционер</span>
+                          </div>
+                        </div>
+                        <div className="text-base sm:text-xl font-bold text-white">
+                          {hall.pricePerHour.toLocaleString('ru-RU')} ₽/час
+                        </div>
                       </div>
-                      <div className="text-base sm:text-xl font-bold text-white">
-                        {hall.pricePerHour} ₽/час
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-purple-200/70">Нет доступных залов</p>
+                  </div>
+                )}
               </div>
 
               {/* Форма бронирования зала */}
@@ -236,7 +368,7 @@ export default function RentalPage() {
                           required
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          className="w-full pl-10 pr-4 py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white placeholder-purple-300/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all text-sm"
+                          className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white placeholder-purple-300/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all text-sm sm:text-base min-h-[44px]"
                           placeholder="Введите ваше имя"
                         />
                       </div>
@@ -257,7 +389,7 @@ export default function RentalPage() {
                           required
                           value={formData.phone}
                           onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                          className="w-full pl-10 pr-4 py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white placeholder-purple-300/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all text-sm"
+                          className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white placeholder-purple-300/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all text-sm sm:text-base min-h-[44px]"
                           placeholder="+7 (___) ___-__-__"
                         />
                       </div>
@@ -277,11 +409,12 @@ export default function RentalPage() {
                           required
                           value={formData.hall}
                           onChange={(e) => setFormData({ ...formData, hall: e.target.value })}
-                          className="w-full pl-10 pr-4 py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all appearance-none text-sm"
+                          className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all appearance-none text-sm sm:text-base min-h-[44px]"
+                          style={{ color: '#ffffff' }}
                         >
-                          <option value="" className="bg-purple-900">Выберите зал</option>
+                          <option value="" style={{ color: '#9ca3af', backgroundColor: '#1f2937' }}>Выберите зал</option>
                           {halls.map((hall) => (
-                            <option key={hall.id} value={hall.id} className="bg-purple-900">
+                            <option key={hall.id} value={hall.id} style={{ color: '#ffffff', backgroundColor: '#1f2937' }}>
                               {hall.name}
                             </option>
                           ))}
@@ -303,10 +436,10 @@ export default function RentalPage() {
                           id="participants"
                           required
                           min="1"
-                          max="15"
+                          max="6"
                           value={formData.participants}
                           onChange={(e) => setFormData({ ...formData, participants: e.target.value })}
-                          className="w-full pl-10 pr-4 py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white placeholder-purple-300/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all text-sm"
+                          className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white placeholder-purple-300/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all text-sm sm:text-base min-h-[44px]"
                           placeholder="Введите количество"
                         />
                       </div>
@@ -327,7 +460,7 @@ export default function RentalPage() {
                           required
                           value={formData.date}
                           onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                          className="w-full pl-10 pr-4 py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all text-sm"
+                          className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all text-sm sm:text-base min-h-[44px]"
                         />
                       </div>
                     </div>
@@ -346,11 +479,15 @@ export default function RentalPage() {
                           required
                           value={formData.time}
                           onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                          className="w-full pl-10 pr-4 py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all appearance-none text-sm"
+                          disabled={loadingTimes || !formData.date || !formData.hall || availableTimes.length === 0}
+                          className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all appearance-none text-sm sm:text-base min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
+                          style={{ color: '#ffffff' }}
                         >
-                          <option value="" className="bg-purple-900">Выберите время</option>
+                          <option value="" style={{ color: '#9ca3af', backgroundColor: '#1f2937' }}>
+                            {loadingTimes ? 'Загрузка...' : !formData.date || !formData.hall ? 'Сначала выберите дату и зал' : availableTimes.length === 0 ? 'Нет доступного времени' : 'Выберите время'}
+                          </option>
                           {availableTimes.map((time) => (
-                            <option key={time} value={time} className="bg-purple-900">
+                            <option key={time} value={time} style={{ color: '#ffffff', backgroundColor: '#1f2937' }}>
                               {time}
                             </option>
                           ))}
@@ -368,7 +505,8 @@ export default function RentalPage() {
                         required
                         value={formData.duration}
                         onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                        className="w-full px-4 py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all appearance-none text-sm"
+                        className="w-full px-4 py-2.5 sm:py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all appearance-none text-sm sm:text-base min-h-[44px]"
+                        style={{ color: '#ffffff' }}
                       >
                         <option value="1" className="bg-purple-900">1 час</option>
                         <option value="2" className="bg-purple-900">2 часа</option>
@@ -387,7 +525,7 @@ export default function RentalPage() {
                         rows={3}
                         value={formData.comment}
                         onChange={(e) => setFormData({ ...formData, comment: e.target.value })}
-                        className="w-full px-4 py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white placeholder-purple-300/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all text-sm resize-none"
+                        className="w-full px-4 py-2.5 sm:py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white placeholder-purple-300/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all text-sm sm:text-base resize-none min-h-[80px]"
                         placeholder="Дополнительные пожелания или вопросы"
                       />
                     </div>
@@ -397,8 +535,9 @@ export default function RentalPage() {
                     type="submit"
                     variant="default"
                     className="w-full text-sm sm:text-base py-3"
+                    disabled={submitting}
                   >
-                    Отправить заявку на аренду
+                    {submitting ? 'Отправка...' : 'Отправить заявку на аренду'}
                   </Button>
                 </form>
               </div>
@@ -419,7 +558,7 @@ export default function RentalPage() {
                 <div className="bg-purple-800/30 rounded-lg p-4 border border-purple-500/20">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <div className="text-2xl font-bold text-white mb-1">500 ₽/час</div>
+                      <div className="text-2xl font-bold text-white mb-1">{polePricePerHour.toLocaleString('ru-RU')} ₽/час</div>
                       <div className="text-sm text-purple-200/70">За один пилон</div>
                     </div>
                     <div>
@@ -461,7 +600,7 @@ export default function RentalPage() {
                           required
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          className="w-full pl-10 pr-4 py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white placeholder-purple-300/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all text-sm"
+                          className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white placeholder-purple-300/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all text-sm sm:text-base min-h-[44px]"
                           placeholder="Введите ваше имя"
                         />
                       </div>
@@ -482,7 +621,7 @@ export default function RentalPage() {
                           required
                           value={formData.phone}
                           onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                          className="w-full pl-10 pr-4 py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white placeholder-purple-300/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all text-sm"
+                          className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white placeholder-purple-300/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all text-sm sm:text-base min-h-[44px]"
                           placeholder="+7 (___) ___-__-__"
                         />
                       </div>
@@ -502,7 +641,8 @@ export default function RentalPage() {
                           required
                           value={formData.hall}
                           onChange={(e) => setFormData({ ...formData, hall: e.target.value })}
-                          className="w-full pl-10 pr-4 py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all appearance-none text-sm"
+                          className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all appearance-none text-sm sm:text-base min-h-[44px]"
+                          style={{ color: '#ffffff' }}
                         >
                           <option value="" className="bg-purple-900">Выберите зал</option>
                           {halls.map((hall) => (
@@ -524,11 +664,15 @@ export default function RentalPage() {
                         required
                         value={formData.poleCount}
                         onChange={(e) => setFormData({ ...formData, poleCount: e.target.value })}
-                        className="w-full px-4 py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all appearance-none text-sm"
+                        className="w-full px-4 py-2.5 sm:py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all appearance-none text-sm sm:text-base min-h-[44px]"
+                        style={{ color: '#ffffff' }}
                       >
                         <option value="1" className="bg-purple-900">1 пилон</option>
                         <option value="2" className="bg-purple-900">2 пилона</option>
                         <option value="3" className="bg-purple-900">3 пилона</option>
+                        <option value="4" className="bg-purple-900">4 пилона</option>
+                        <option value="5" className="bg-purple-900">5 пилонов</option>
+                        <option value="6" className="bg-purple-900">6 пилонов</option>
                       </select>
                     </div>
 
@@ -547,7 +691,7 @@ export default function RentalPage() {
                           required
                           value={formData.date}
                           onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                          className="w-full pl-10 pr-4 py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all text-sm"
+                          className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all text-sm sm:text-base min-h-[44px]"
                         />
                       </div>
                     </div>
@@ -566,9 +710,13 @@ export default function RentalPage() {
                           required
                           value={formData.time}
                           onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                          className="w-full pl-10 pr-4 py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all appearance-none text-sm"
+                          disabled={loadingTimes || !formData.date || !formData.hall || availableTimes.length === 0}
+                          className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all appearance-none text-sm sm:text-base min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
+                          style={{ color: '#ffffff' }}
                         >
-                          <option value="" className="bg-purple-900">Выберите время</option>
+                          <option value="" className="bg-purple-900">
+                            {loadingTimes ? 'Загрузка...' : !formData.date || !formData.hall ? 'Сначала выберите дату и зал' : availableTimes.length === 0 ? 'Нет доступного времени' : 'Выберите время'}
+                          </option>
                           {availableTimes.map((time) => (
                             <option key={time} value={time} className="bg-purple-900">
                               {time}
@@ -588,7 +736,8 @@ export default function RentalPage() {
                         required
                         value={formData.duration}
                         onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                        className="w-full px-4 py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all appearance-none text-sm"
+                        className="w-full px-4 py-2.5 sm:py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all appearance-none text-sm sm:text-base min-h-[44px]"
+                        style={{ color: '#ffffff' }}
                       >
                         <option value="1" className="bg-purple-900">1 час</option>
                         <option value="2" className="bg-purple-900">2 часа</option>
@@ -606,7 +755,7 @@ export default function RentalPage() {
                         rows={3}
                         value={formData.comment}
                         onChange={(e) => setFormData({ ...formData, comment: e.target.value })}
-                        className="w-full px-4 py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white placeholder-purple-300/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all text-sm resize-none"
+                        className="w-full px-4 py-2.5 sm:py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white placeholder-purple-300/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all text-sm sm:text-base resize-none min-h-[80px]"
                         placeholder="Дополнительные пожелания или вопросы"
                       />
                     </div>
@@ -616,8 +765,9 @@ export default function RentalPage() {
                     type="submit"
                     variant="default"
                     className="w-full text-sm sm:text-base py-3"
+                    disabled={submitting}
                   >
-                    Отправить заявку на аренду
+                    {submitting ? 'Отправка...' : 'Отправить заявку на аренду'}
                   </Button>
                 </form>
               </div>

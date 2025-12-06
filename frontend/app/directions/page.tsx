@@ -1,8 +1,11 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { BeamsBackground } from '@/components/ui/beams-background'
 import { Button } from '@/components/ui/button'
+import { directionsAPI, Direction } from '@/lib/api'
+import { mockDirections } from '@/lib/mockData'
 
 // Иконки
 const ChevronLeftIcon = () => (
@@ -23,173 +26,103 @@ const CheckIcon = () => (
   </svg>
 )
 
-// Направления с подробной информацией
-const directions = [
-  {
-    id: 'pole-fit',
-    name: 'Pole Fit',
-    tagline: 'Красивый фитнес на пилоне',
-    description: 'На занятии учим элементы и комбинации из них.\n\nНесмотря на то, что большую часть урока проводим «в воздухе», новичкам не стоит бояться Pole Fit. Нагрузка всегда дается по силам. Помимо суставной разминки и работы на пилоне, занятие включает в себя упражнения на общую и специальную физическую подготовку.\n\nОдин из самых эстетичных видов фитнеса, с которым подтягивается все тело!',
-    features: [
-      'Трюки и акробатика на пилоне',
-      'Подходит для новичков',
-      'Общая физическая подготовка',
-      'Специальная физическая подготовка'
-    ],
-    levels: ['Вводный', 'Начинающий', 'Продолжающий', 'Продвинутый']
-  },
-  {
-    id: 'pole-exotic',
-    name: 'Pole Exotic',
-    tagline: 'Танец с пилоном на каблуках',
-    description: 'Направление, где ты сможешь выражать себя через музыку и свое тело. На такой тренировке мы учимся красиво двигаться в специальной обуви — стрипах: с пилоном и без него, в партере.',
-    features: [
-      'Танец на каблуках',
-      'Работа с музыкальностью',
-      'Движения на пилоне и в партере',
-      'Развитие пластике'
-    ],
-    levels: ['Начинающие', 'Продолжающие']
-  },
-  {
-    id: 'strength-flexibility',
-    name: 'Сила & Гибкость',
-    tagline: 'Силовая тренировка + растяжка',
-    description: 'Направление, которое поможет обрести фигуру мечты и ускорить прогресс в Pole Fit и Pole Exotic. Включает в себя упражнения на общую физическую подготовку и стретчинг.',
-    features: [
-      'Общая физическая подготовка',
-      'Стретчинг',
-      'Подтянутое тело',
-      'Способствует прогрессу на пилоне'
-    ],
-    levels: ['Все уровни']
-  },
-  {
-    id: 'stretching',
-    name: 'Растяжка',
-    tagline: 'Здоровое тело, шпагаты и прогибы',
-    description: 'Мы сочетаем разные виды стретчинга: активный, пассивный, статический и динамический; составляем программы занятий с учетом современных трендов. В нашем расписании есть классы как фитнес-растяжки, так и растяжки, направленной на достижение определенных целей (к примеру, шпагатов или мостиков).',
-    features: [
-      'Сочетание разных видов стретчинга',
-      'Современные методики',
-      'Фитнес-растяжка',
-      'Растяжка на шпагат'
-    ],
-    levels: ['Все уровни']
-  },
-  {
-    id: 'choreo',
-    name: 'Choreo',
-    tagline: 'Популярные женские стили',
-    description: 'На Choreo мы учим связки в стилях High Heels и Jazz Funk.\n\nHigh Heels — танец на шпильках, где важно не только красиво двигаться, но и удержать равновесие. Направление развивает координацию движений, а также укрепляет мышцы ног.\n\nJazz Funk — симбиоз хип-хопа, джазовой и эстрадной хореографии, вакинга. Яркий танец, который исполняют в кроссовках.',
-    features: [
-      'Танцы на каблуках и в кроссовках',
-      'Укрепление мышц ног',
-      'Развитие координации',
-      'Яркие эмоции'
-    ],
-    levels: ['Все уровни']
-  },
-  {
-    id: 'strip',
-    name: 'Strip',
-    tagline: 'Современный стрип',
-    description: 'На занятиях по этому направлению вы научитесь красиво и пластично двигаться на стрипах: стоя и в партере. Особое внимание в Strip уделяется музыкальности: каждое движение в танце выполняется на определенный звук.',
-    features: [
-      'Танцы на каблуках',
-      'Работа с пластикой',
-      'Развитие музыкальности',
-      'Партерная акробатика'
-    ],
-    levels: ['Все уровни']
-  }
-]
-
 export default function DirectionsPage() {
   const router = useRouter()
+  // Инициализируем сразу с mock данными для мгновенного отображения
+  const [directions, setDirections] = useState<Direction[]>(mockDirections)
+
+  // Загружаем данные из backend в фоне и обновляем когда готовы
+  useEffect(() => {
+    // Прокручиваем к началу страницы при загрузке
+    window.scrollTo(0, 0)
+    
+    const loadDirections = async () => {
+      try {
+        const response = await directionsAPI.getAll()
+        // Обновляем только если получили данные из backend
+        if (response.directions && response.directions.length > 0) {
+          setDirections(response.directions)
+        }
+      } catch (err) {
+        // Если backend недоступен, остаемся на mock данных
+        console.warn('Backend недоступен, используем mock данные:', err)
+      }
+    }
+
+    // Загружаем сразу без задержки
+    loadDirections()
+  }, [])
 
   return (
     <BeamsBackground intensity="medium">
-      <div className="min-h-screen">
-        
-        {/* Header - Адаптивный */}
-        <div className="sticky top-0 z-20 bg-black/40 backdrop-blur-xl border-b border-purple-500/20">
-          <div className="px-3 sm:px-6 py-3 sm:py-4">
-            <div className="flex items-center gap-2 sm:gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
+      <main className="min-h-screen relative flex flex-col text-white pb-20 sm:pb-24 z-10">
+        <div className="relative z-20 px-3 sm:px-4 pt-3 sm:pt-4">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
+          <button
                 onClick={() => router.back()}
-                className="gap-1 sm:gap-2 px-2 sm:px-3"
+            className="p-2 hover:bg-white/10 rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
               >
                 <ChevronLeftIcon />
-                <span className="hidden sm:inline">Назад</span>
-              </Button>
-              <div className="flex-1">
-                <h1 className="text-base sm:text-xl md:text-2xl font-bold text-white">
-                  Наши направления
-                </h1>
-                <p className="text-xs text-purple-200/70 mt-0.5 sm:mt-1 hidden sm:block">
-                  Найдите то, что подходит именно вам
-                </p>
+          </button>
+          <div className="text-center flex-1 px-2">
+            <h1 className="text-xl sm:text-2xl font-bold">Наши направления</h1>
+            <p className="text-xs sm:text-sm text-gray-400 mt-1">Найдите то, что подходит именно вам</p>
               </div>
-            </div>
-          </div>
+          <div className="w-9" />
         </div>
 
-        {/* Content */}
-        <div className="px-3 sm:px-6 py-4 sm:py-6">
-          
-          {/* Направления - Адаптивные карточки */}
-          <div className="space-y-2.5 sm:space-y-6 mb-6 sm:mb-12">
+        {/* Направления */}
+        <div className="space-y-4 sm:space-y-6 max-w-4xl mx-auto">
             {directions.map((direction) => (
               <div
                 key={direction.id}
-                className="bg-purple-900/40 backdrop-blur-xl rounded-lg sm:rounded-xl border border-purple-500/20 p-3 sm:p-8 hover:border-purple-400/40 transition-colors"
+              className="bg-gradient-to-br from-purple-900/40 to-purple-800/20 backdrop-blur-xl rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 border border-purple-500/20"
               >
-                {/* Header - Адаптивный */}
-                <div className="mb-2 sm:mb-4">
-                  <h2 className="text-base sm:text-3xl font-bold text-white mb-1">
-                    {direction.name}
-                  </h2>
-                  <p className="text-purple-300 text-xs sm:text-base font-medium">
-                    {direction.tagline}
-                  </p>
+              {/* Header */}
+              <div className="flex items-start gap-2 sm:gap-3 mb-3 sm:mb-4">
+                <SparklesIcon />
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-1 break-words">{direction.name}</h2>
+                  <p className="text-purple-300 text-xs sm:text-sm md:text-base">{direction.tagline}</p>
+                </div>
                 </div>
 
-                {/* Description - Адаптивный размер */}
-                <p className="text-purple-200/80 text-xs sm:text-base leading-relaxed mb-3 sm:mb-6">
+              {/* Description */}
+              <p className="text-gray-200 text-xs sm:text-sm md:text-base mb-4 sm:mb-6 whitespace-pre-line leading-relaxed">
                   {direction.description}
                 </p>
 
-                {/* Features & Levels - Адаптивная сетка */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4 mb-3 sm:mb-6">
-                  {/* Features */}
+              {/* Features & Levels Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
+                {/* Особенности */}
                   <div>
-                    <h3 className="text-xs sm:text-sm font-semibold text-purple-300 mb-1.5 sm:mb-3 flex items-center gap-1 sm:gap-2">
+                  <h3 className="text-sm font-semibold text-purple-300 uppercase tracking-wide mb-3 flex items-center gap-2">
                       <SparklesIcon />
                       Особенности
                     </h3>
-                    <ul className="space-y-1 sm:space-y-2">
-                      {direction.features.map((feature, idx) => (
-                        <li key={idx} className="flex items-start gap-1 sm:gap-2 text-purple-200/80 text-xs sm:text-sm">
+                  <div className="space-y-2">
+                    {direction.features && direction.features.map((feature, index) => (
+                      <div key={index} className="flex items-start gap-2">
+                        <div className="mt-0.5 text-green-400 flex-shrink-0">
                           <CheckIcon />
-                          <span className="leading-snug">{feature}</span>
-                        </li>
+                        </div>
+                        <span className="text-sm text-gray-300">{feature}</span>
+                      </div>
                       ))}
-                    </ul>
+                  </div>
                   </div>
 
-                  {/* Levels */}
+                {/* Уровни подготовки */}
                   <div>
-                    <h3 className="text-xs sm:text-sm font-semibold text-purple-300 mb-1.5 sm:mb-3">
+                  <h3 className="text-sm font-semibold text-purple-300 uppercase tracking-wide mb-3">
                       Уровни подготовки
                     </h3>
-                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                      {direction.levels.map((level, idx) => (
+                  <div className="flex flex-wrap gap-2">
+                    {direction.levels && direction.levels.map((level, index) => (
                         <span
-                          key={idx}
-                          className="px-2 py-0.5 sm:px-3 sm:py-1.5 rounded-full bg-purple-500/20 text-purple-200 text-xs sm:text-sm font-medium border border-purple-400/20"
+                        key={index}
+                        className="px-3 py-1.5 bg-purple-800/50 border border-purple-500/30 rounded-full text-sm font-medium"
                         >
                           {level}
                         </span>
@@ -198,26 +131,21 @@ export default function DirectionsPage() {
                   </div>
                 </div>
 
-                {/* Actions - Адаптивные кнопки в 2 колонки */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+              {/* Action Buttons */}
+              <div className="flex gap-2 sm:gap-3">
                   <Button
                     variant="default"
-                    className="w-full text-xs sm:text-base py-2 sm:py-3"
-                    onClick={() => router.push('/schedule')}
+                  className="flex-1 min-h-[44px] text-sm sm:text-base"
+                    onClick={() => router.push('/prices')}
                   >
-                    Записаться на занятие
-                  </Button>
-                  <Button variant="outline" className="w-full text-xs sm:text-base py-2 sm:py-3">
-                    Подробнее
+                    Приобрести абонемент
                   </Button>
                 </div>
               </div>
             ))}
           </div>
-
         </div>
-      </div>
+      </main>
     </BeamsBackground>
   )
 }
-

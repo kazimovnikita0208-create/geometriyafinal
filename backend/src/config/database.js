@@ -1,45 +1,25 @@
-/**
- * Конфигурация базы данных SQLite
- */
-
 const Database = require('better-sqlite3');
 const path = require('path');
-require('dotenv').config();
 
-const dbPath = process.env.DATABASE_PATH || path.join(__dirname, '../../database/geometriya.db');
+// Путь к базе данных
+const dbPath = path.join(__dirname, '..', '..', 'dev.db');
 
+// Singleton для БД
 let db;
 
-/**
- * Получить подключение к базе данных
- */
 function getDatabase() {
   if (!db) {
-    db = new Database(dbPath, {
-      verbose: process.env.NODE_ENV === 'development' ? console.log : null
-    });
-    
-    // Включить внешние ключи
-    db.pragma('foreign_keys = ON');
-    
-    console.log(`✅ Подключение к базе данных: ${dbPath}`);
+    try {
+      db = new Database(dbPath);
+      // Включаем поддержку внешних ключей
+      db.pragma('foreign_keys = ON');
+      console.log('✅ Подключение к базе данных успешно');
+    } catch (error) {
+      console.error('❌ Ошибка подключения к базе данных:', error);
+      throw error;
+    }
   }
-  
   return db;
 }
 
-/**
- * Закрыть подключение к базе данных
- */
-function closeDatabase() {
-  if (db) {
-    db.close();
-    console.log('🔒 База данных закрыта');
-  }
-}
-
-module.exports = {
-  getDatabase,
-  closeDatabase
-};
-
+module.exports = getDatabase();

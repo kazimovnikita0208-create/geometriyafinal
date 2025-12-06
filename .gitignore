@@ -60,3 +60,15 @@ temp/
 *.backup
 *.bak
 
+# ngrok
+ngrok.exe
+ngrok
+*.ngrok
+
+# Database files
+backend/dev.db
+backend/*.db
+backend/*.db-journal
+backend/database/
+backend/*.log
+

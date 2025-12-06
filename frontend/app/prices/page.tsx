@@ -1,20 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import React from 'react'
 import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { BeamsBackground } from '@/components/ui/beams-background'
 import { Button } from '@/components/ui/button'
+import { subscriptionTypesAPI, subscriptionsAPI, SubscriptionType, directionsAPI, trainersAPI, hallsAPI, lessonsAPI, Direction, Trainer, Hall, Lesson } from '@/lib/api'
+import { mockSubscriptionTypes } from '@/lib/mockData'
+import { initTelegramAuth } from '@/lib/auth'
+import { UserIcon, MapPinIcon, TicketIcon } from '@/components/ui/icons'
 
 // Иконки
 const ChevronLeftIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-  </svg>
-)
-
-const CheckIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
   </svg>
 )
 
@@ -30,9 +29,9 @@ const InfoIcon = () => (
   </svg>
 )
 
-const XIcon = () => (
-  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+const PhoneIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
   </svg>
 )
 
@@ -42,686 +41,869 @@ const BookOpenIcon = () => (
   </svg>
 )
 
-const UserIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-  </svg>
-)
-
-const PhoneIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-  </svg>
-)
-
-const MapPinIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-  </svg>
-)
-
 const ListIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
   </svg>
 )
 
-// Абонементы с детальной информацией
-const subscriptionCategories = [
-  {
-    id: 'classic',
-    title: 'КЛАССИЧЕСКИЙ',
-    subtitle: 'Распространяется на все направления студии',
-    popular: true,
-    badge: 'Популярно',
-    subscriptions: [
-      { lessons: '1 занятие', price: '700' },
-      { lessons: '4 занятия', price: '2 500' },
-      { lessons: '6 занятий', price: '3 300' },
-      { lessons: '8 занятий', price: '3 800' },
-      { lessons: '12 занятий', price: '4 600' },
-      { lessons: '16 занятий', price: '5 400' },
-      { lessons: 'Безлимит', price: '5 900' }
-    ]
-  },
-  {
-    id: 'fitness',
-    title: 'ТОЛЬКО ФИТНЕС',
-    subtitle: 'Распространяется на все занятия без пилона: растяжку, силу и гибкость, choreo, strip',
-    popular: false,
-    badge: null,
-    subscriptions: [
-      { lessons: '1 занятие', price: '600' },
-      { lessons: '4 занятия', price: '2 200' },
-      { lessons: '6 занятий', price: '2 600' },
-      { lessons: '8 занятий', price: '3 000' },
-      { lessons: '12 занятий', price: '3 700' }
-    ]
-  },
-  {
-    id: 'combo',
-    title: 'КОМБО-АБОНЕМЕНТ',
-    subtitle: 'Лимитированное количество занятий с пилоном и без',
-    popular: false,
-    badge: 'Выгодно',
-    subscriptions: [
-      { lessons: '2 любых занятия на пилоне и 2 — без', price: '2 300' },
-      { lessons: '4 любых занятия на пилоне и 4 — без', price: '3 500' },
-      { lessons: '8 любых занятий на пилоне и 4 — без', price: '4 300' }
-    ]
-  }
-]
-
-// Условия
-const terms = [
-  'Абонемент действует 1 месяц с даты первого занятия по нему',
-  'В случае отпуска или больничного можно воспользоваться «заморозкой» и продлить действие абонемента на срок до 2 недель',
-  'Отмена или перенос вечернего занятия возможны не позднее, чем за 4 часа до его начала',
-  'Отмена или перенос утреннего или дневного занятия осуществляются до 21:00 предшествующего дня'
-]
-
-// Правила пользования абонементом
-const rules = [
-  {
-    title: 'Что делать, если я заболела / ухожу в отпуск, командировку?',
-    content: [
-      'В случае больничного, отпуска или командировки вы можете «заморозить» абонемент, т.е. продлить его срок действия на срок до 2 недель.',
-      '«Заморозкой» занимается координатор групп. Чтобы воспользоваться опцией, просто напишите ему. «Заморозка» начнет действовать со следующего дня после вашего предупреждения.'
-    ]
-  },
-  {
-    title: 'Можно ли отменить запись разово?',
-    content: [
-      'Конечно! Причина не важна :) Если ваше занятие должно состояться вечером после 17:00, нужно выписаться не позже, чем за 4 часа до начала тренировки. В таком случае ваше место смогут занять другие желающие.',
-      'Если ваше занятие должно состояться в первой половине дня до 17:00, нужно выписаться не позже 21:00 предыдущего дня. К примеру: если вы записаны на занятие в воскресенье в 12:00, необходимо предупредить о своем отсутствии до 21:00 субботы.'
-    ]
-  },
-  {
-    title: 'Обязательно ли закреплять за собой место в группах?',
-    content: [
-      'Необязательно. У нас в студии действует два формата записи — «гибкая» и «автомат».',
-      'При «гибкой» записи можно записываться каждую неделю на свободные места в разные группы.',
-      'При «автомате» можно закрепить за собой место в определенных группах и не беспокоиться, что его заберут раньше вас.',
-      'Важно: если вы записываетесь «автоматом», нужно ходить регулярно. При пропуске занятия в группе более 3 недель подряд запись «автоматом» автоматически снимается.'
-    ]
-  }
-]
+const XIcon = () => (
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+  </svg>
+)
 
 export default function PricesPage() {
   const router = useRouter()
-  const [isRulesModalOpen, setIsRulesModalOpen] = useState(false)
+  // Инициализируем сразу с mock данными для мгновенного отображения
+  const [subscriptionTypes, setSubscriptionTypes] = useState<Record<string, SubscriptionType[]>>(mockSubscriptionTypes)
+  const [selectedSubscription, setSelectedSubscription] = useState<SubscriptionType | null>(null)
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false)
-  const [selectedCategory, setSelectedCategory] = useState<string>('')
-  const [selectedCategoryData, setSelectedCategoryData] = useState<any>(null)
-  const [selectedLessons, setSelectedLessons] = useState<string>('')
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     phone: '',
     address: '',
-    lessons: '',
-    bookingType: 'flexible', // 'flexible' или 'automatic'
-    direction: '',
-    weekdays: [] as string[]
+    bookingType: 'flexible' as 'flexible' | 'automatic',
+    // Для автоматической записи (старый способ - для простых абонементов)
+    autoDirections: [] as number[], // Массив ID направлений
+    autoTrainerId: '',
+    autoHallId: '',
+    autoStartTime: '',
+    autoEndTime: '',
+    autoWeekdays: [] as number[], // 0-6 (Sunday-Saturday)
+    // Для автоматической записи (новый способ - конкретные занятия для комбо)
+    autoLessons: [] as Array<{
+      day_of_week: number; // 1-7 (1=Пн, 7=Вс)
+      direction_id: number;
+      start_time: string;
+      end_time: string;
+      trainer_id?: number;
+      hall_id?: number;
+    }>
   })
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [directions, setDirections] = useState<Direction[]>([])
+  const [trainers, setTrainers] = useState<Trainer[]>([])
+  const [halls, setHalls] = useState<Hall[]>([])
+  const [loadingData, setLoadingData] = useState(false)
+  const [scheduleLessons, setScheduleLessons] = useState<Lesson[]>([])
+  const [loadingSchedule, setLoadingSchedule] = useState(false)
+  const [selectedHallFilter, setSelectedHallFilter] = useState<string>('all') // 'all', 'volgina', 'ohotny'
 
-  const handleBookingSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  // Загружаем данные из backend в фоне и обновляем когда готовы
+  useEffect(() => {
+    // Прокручиваем к началу страницы при загрузке
+    window.scrollTo(0, 0)
     
-    // Валидация для автоматической записи
-    if (formData.bookingType === 'automatic') {
-      if (!formData.direction) {
-        alert('Пожалуйста, выберите направление')
-        return
-      }
-      if (!formData.weekdays || formData.weekdays.length === 0) {
-        alert('Пожалуйста, выберите хотя бы один день недели')
-        return
+    // Инициализируем Telegram авторизацию
+    initTelegramAuth().then(isAuth => {
+      console.log('Авторизация:', isAuth ? 'успешна' : 'не выполнена')
+    })
+    
+    const loadSubscriptionTypes = async () => {
+      try {
+        const response = await subscriptionTypesAPI.getAll()
+        // Обновляем только если получили данные из backend
+        if (response.subscriptionTypes && Object.keys(response.subscriptionTypes).length > 0) {
+          setSubscriptionTypes(response.subscriptionTypes)
+        }
+      } catch (err) {
+        // Если backend недоступен, остаемся на mock данных
+        console.warn('Backend недоступен, используем mock данные:', err)
       }
     }
     
-    // Здесь будет логика отправки данных
-    console.log('Booking data:', { ...formData, category: selectedCategory })
-    
-    // Закрываем модальное окно и очищаем форму
-    setIsBookingModalOpen(false)
-    setFormData({ 
-      firstName: '', 
-      lastName: '', 
-      phone: '', 
-      address: '', 
-      lessons: '',
-      bookingType: 'flexible',
-      direction: '',
-      weekdays: []
-    })
-    setSelectedLessons('')
-    
-    // Уведомление с информацией о типе записи
-    const bookingTypeText = formData.bookingType === 'flexible' 
-      ? 'Вы выбрали гибкую запись.' 
-      : `Вы выбрали запись автоматом на ${formData.direction}.`
-    alert(`Спасибо! Ваша заявка принята. ${bookingTypeText} Мы свяжемся с вами в ближайшее время.`)
+    const loadFormData = async () => {
+      try {
+        setLoadingData(true)
+        const [directionsRes, trainersRes, hallsRes] = await Promise.all([
+          directionsAPI.getAll(),
+          trainersAPI.getAll(),
+          hallsAPI.getAll()
+        ])
+        setDirections(directionsRes.directions || [])
+        setTrainers(trainersRes.trainers || [])
+        setHalls(hallsRes.halls || [])
+      } catch (error) {
+        console.error('Ошибка загрузки данных для формы:', error)
+      } finally {
+        setLoadingData(false)
+      }
+    }
+
+    // Загружаем сразу без задержки
+    loadSubscriptionTypes()
+    loadFormData()
+  }, [])
+
+  // Загружаем расписание для автоматической записи
+  useEffect(() => {
+    if (formData.bookingType === 'automatic' && isBookingModalOpen && selectedSubscription) {
+      loadSchedule()
+    }
+  }, [formData.bookingType, isBookingModalOpen, selectedSubscription?.id])
+
+  const loadSchedule = async () => {
+    try {
+      setLoadingSchedule(true)
+      // Загружаем занятия на ближайшие 7 дней
+      const today = new Date()
+      const nextWeek = new Date(today)
+      nextWeek.setDate(nextWeek.getDate() + 7)
+      
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+      const nextWeekStr = `${nextWeek.getFullYear()}-${String(nextWeek.getMonth() + 1).padStart(2, '0')}-${String(nextWeek.getDate()).padStart(2, '0')}`
+      
+      const lessonsRes = await lessonsAPI.getAll({ from_date: todayStr, to_date: nextWeekStr })
+      setScheduleLessons(lessonsRes.lessons || [])
+    } catch (error) {
+      console.error('Ошибка загрузки расписания:', error)
+    } finally {
+      setLoadingSchedule(false)
+    }
   }
 
-  const openBookingModal = (category: any, lessons?: string) => {
-    setSelectedCategory(category.title)
-    setSelectedCategoryData(category)
-    if (lessons) {
-      setSelectedLessons(lessons)
-      setFormData(prev => ({ ...prev, lessons, bookingType: 'flexible', direction: '', weekdays: [] }))
-    } else {
-      setSelectedLessons('')
-      setFormData(prev => ({ ...prev, lessons: '', bookingType: 'flexible', direction: '', weekdays: [] }))
+  // Группировка занятий по дням недели
+  const getLessonsByDayOfWeek = () => {
+    const filtered = scheduleLessons.filter(lesson => {
+      // Фильтр по залам (проверяем по имени зала, а не по адресу)
+      if (selectedHallFilter === 'volgina') {
+        const hallName = lesson.hall_name || ''
+        if (!hallName.toLowerCase().includes('волгина') && !hallName.toLowerCase().includes('volgina')) {
+          return false
+        }
+      } else if (selectedHallFilter === 'ohotny') {
+        const hallName = lesson.hall_name || ''
+        if (!hallName.toLowerCase().includes('охотный') && !hallName.toLowerCase().includes('ohotny')) {
+          return false
+        }
+      }
+      
+      // Фильтр по типу абонемента
+      if (selectedSubscription?.category === 'fitness') {
+        // Для фитнес-абонемента показываем только занятия без пилона
+        const requiresPole = directions.find(d => d.id === lesson.direction_id)?.requires_pole
+        if (requiresPole) return false
+      }
+      
+      // Показываем только будущие занятия
+      const now = new Date()
+      const [year, month, day] = lesson.lesson_date.split('-').map(Number)
+      const [startHour, startMinute] = lesson.start_time.split(':').map(Number)
+      const lessonStartDateTime = new Date(year, month - 1, day, startHour, startMinute)
+      if (lessonStartDateTime < now) return false
+      
+      return true
+    })
+    
+    // Группируем по дням недели (1-7, где 1=Пн, 7=Вс)
+    const grouped: Record<number, Lesson[]> = {}
+    
+    filtered.forEach(lesson => {
+      const [year, month, day] = lesson.lesson_date.split('-').map(Number)
+      const lessonDate = new Date(year, month - 1, day)
+      let dayOfWeek = lessonDate.getDay() // 0-6 (0=Вс, 1=Пн, ..., 6=Сб)
+      // Конвертируем в нашу систему (1-7, где 1=Пн, 7=Вс)
+      dayOfWeek = dayOfWeek === 0 ? 7 : dayOfWeek
+      
+      if (!grouped[dayOfWeek]) {
+        grouped[dayOfWeek] = []
+      }
+      grouped[dayOfWeek].push(lesson)
+    })
+    
+    // Сортируем занятия по времени в каждом дне
+    Object.keys(grouped).forEach(day => {
+      grouped[parseInt(day)].sort((a, b) => a.start_time.localeCompare(b.start_time))
+    })
+    
+    return grouped
+  }
+
+  // Проверка, выбрано ли занятие
+  const isLessonSelected = (lesson: Lesson): boolean => {
+    return formData.autoLessons.some(selected => {
+      const [year, month, day] = lesson.lesson_date.split('-').map(Number)
+      const lessonDate = new Date(year, month - 1, day)
+      let dayOfWeek = lessonDate.getDay()
+      dayOfWeek = dayOfWeek === 0 ? 7 : dayOfWeek
+      
+      return selected.day_of_week === dayOfWeek &&
+             selected.direction_id === lesson.direction_id &&
+             selected.start_time === lesson.start_time &&
+             selected.end_time === lesson.end_time &&
+             selected.hall_id === lesson.hall_id
+    })
+  }
+
+  // Переключение выбора занятия
+  const toggleLessonSelection = (lesson: Lesson) => {
+    const [year, month, day] = lesson.lesson_date.split('-').map(Number)
+    const lessonDate = new Date(year, month - 1, day)
+    let dayOfWeek = lessonDate.getDay()
+    dayOfWeek = dayOfWeek === 0 ? 7 : dayOfWeek
+    
+    const lessonData = {
+      day_of_week: dayOfWeek,
+      direction_id: lesson.direction_id,
+      start_time: lesson.start_time,
+      end_time: lesson.end_time,
+      hall_id: lesson.hall_id,
+      trainer_id: lesson.trainer_id
     }
+    
+    if (isLessonSelected(lesson)) {
+      // Удаляем из выбранных
+      setFormData({
+        ...formData,
+        autoLessons: formData.autoLessons.filter(selected => 
+          !(selected.day_of_week === lessonData.day_of_week &&
+            selected.direction_id === lessonData.direction_id &&
+            selected.start_time === lessonData.start_time &&
+            selected.end_time === lessonData.end_time &&
+            selected.hall_id === lessonData.hall_id)
+        )
+      })
+    } else {
+      // Добавляем в выбранные
+      setFormData({
+        ...formData,
+        autoLessons: [...formData.autoLessons, lessonData]
+      })
+    }
+  }
+
+  // Фильтрация направлений в зависимости от типа абонемента
+  const getFilteredDirections = () => {
+    if (!selectedSubscription) return directions
+
+    console.log('🔍 Фильтрация направлений:')
+    console.log('  Тип абонемента:', selectedSubscription.category)
+    console.log('  Всего направлений:', directions.length)
+    console.log('  Направления:', directions.map(d => ({ id: d.id, name: d.name, requires_pole: d.requires_pole })))
+
+    // Для классического абонемента - все направления
+    if (selectedSubscription.category === 'classic') {
+      console.log('  ✅ Классический: возвращаем все направления')
+      return directions
+    }
+
+    // Для фитнес-абонемента - только направления без пилона
+    if (selectedSubscription.category === 'fitness') {
+      const filtered = directions.filter(dir => !dir.requires_pole)
+      console.log('  ✅ Фитнес: отфильтровано', filtered.length, 'направлений')
+      console.log('  Отфильтрованные:', filtered.map(d => d.name))
+      return filtered
+    }
+
+    // Для комбо-абонемента - все направления (но с ограничениями по количеству)
+    if (selectedSubscription.category === 'combo') {
+      console.log('  ✅ Комбо: возвращаем все направления')
+      return directions
+    }
+
+    console.log('  ⚠️ Неизвестная категория, возвращаем все направления')
+    return directions
+  }
+
+  const handleBuyClick = (subscription: SubscriptionType) => {
+    setSelectedSubscription(subscription)
     setIsBookingModalOpen(true)
+    // Тактильная обратная связь только если доступен Telegram WebApp
+    try {
+      if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.HapticFeedback) {
+        (window as any).Telegram.WebApp.HapticFeedback.impactOccurred('medium')
+      }
+    } catch (e) {
+      // Игнорируем ошибки Telegram API в режиме разработки
+    }
+  }
+
+  const handleFormSubmit = async (e: any) => {
+    e.preventDefault()
+    if (!selectedSubscription) return
+
+    // Валидация для автоматической записи
+    if (formData.bookingType === 'automatic') {
+      if (formData.autoLessons.length === 0) {
+        alert('❌ Выберите хотя бы одно занятие из расписания для автоматической записи')
+        return
+      }
+      
+      // Проверяем каждое выбранное занятие
+      for (let i = 0; i < formData.autoLessons.length; i++) {
+        const lesson = formData.autoLessons[i]
+        if (!lesson.direction_id || lesson.direction_id === 0) {
+          alert(`❌ Ошибка: некорректное направление для занятия ${i + 1}`)
+          return
+        }
+        if (!lesson.start_time || !lesson.end_time) {
+          alert(`❌ Ошибка: некорректное время для занятия ${i + 1}`)
+          return
+        }
+        if (lesson.day_of_week < 1 || lesson.day_of_week > 7) {
+          alert(`❌ Ошибка: некорректный день недели для занятия ${i + 1}`)
+          return
+        }
+        if (!lesson.hall_id) {
+          alert(`❌ Ошибка: некорректный зал для занятия ${i + 1}`)
+          return
+        }
+      }
+    }
+
+    setIsSubmitting(true)
+    try {
+      const subscriptionData: any = {
+        subscriptionTypeId: selectedSubscription.id,
+        bookingType: formData.bookingType,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        phone: formData.phone,
+        address: formData.address
+      }
+      
+      // Добавляем данные для автоматической записи
+      if (formData.bookingType === 'automatic') {
+        // Для всех абонементов: отправляем выбранные занятия из расписания
+        subscriptionData.autoLessons = formData.autoLessons.map(lesson => ({
+          day_of_week: lesson.day_of_week,
+          direction_id: lesson.direction_id,
+          start_time: lesson.start_time,
+          end_time: lesson.end_time,
+          trainer_id: lesson.trainer_id,
+          hall_id: lesson.hall_id
+        }))
+      }
+      
+      await subscriptionsAPI.create(subscriptionData)
+
+      // Показываем стильное модальное окно успеха
+      setIsBookingModalOpen(false)
+      setIsSuccessModalOpen(true)
+      
+      // Сброс формы
+      setFormData({ 
+        firstName: '', 
+        lastName: '', 
+        phone: '', 
+        address: '', 
+        bookingType: 'flexible',
+        autoDirections: [],
+        autoTrainerId: '',
+        autoLessons: [],
+        autoHallId: '',
+        autoStartTime: '',
+        autoEndTime: '',
+        autoWeekdays: []
+      })
+    } catch (error) {
+      console.error('Ошибка отправки заявки:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка'
+      alert(`❌ Ошибка: ${errorMessage}`)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
     <BeamsBackground intensity="medium">
-      <div className="min-h-screen">
-        
-        {/* Header */}
-        <div className="sticky top-0 z-20 bg-black/40 backdrop-blur-xl border-b border-purple-500/20">
-          <div className="max-w-6xl mx-auto px-3 sm:px-6 py-3 sm:py-4">
-            <div className="flex items-center gap-2 sm:gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.back()}
-                className="gap-1 sm:gap-2 px-2 sm:px-3"
-              >
-                <ChevronLeftIcon />
-                <span className="hidden sm:inline">Назад</span>
-              </Button>
-              <div className="flex-1">
-                <h1 className="text-base sm:text-xl md:text-2xl font-bold text-white">
-                  Абонементы
-                </h1>
-                <p className="text-xs text-purple-200/70 mt-0.5 sm:mt-1 hidden sm:block">
-                  Выберите подходящий тариф
-                </p>
-              </div>
-            </div>
-          </div>
+      <main className="min-h-screen relative flex flex-col text-white pb-20 sm:pb-24 z-10">
+        <div className="relative z-20 px-4 pt-4 pb-24">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
+          <button
+            onClick={() => router.back()}
+            className="p-2 hover:bg-white/10 rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+          >
+            <ChevronLeftIcon />
+          </button>
+          <h1 className="text-xl sm:text-2xl font-bold">Абонементы</h1>
+          <div className="w-9" />
         </div>
 
-        {/* Content */}
-        <div className="max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
-          
-          {/* Абонементы по категориям */}
-          <div className="space-y-4 sm:space-y-8 mb-8 sm:mb-12">
-            {subscriptionCategories.map((category) => (
-              <div
-                key={category.id}
-                className="bg-purple-900/40 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-purple-500/20 p-3 sm:p-6 md:p-8 hover:border-purple-400/40 transition-colors relative"
-              >
-                {/* Badge */}
-                {category.badge && (
-                  <div className="absolute -top-2 sm:-top-3 left-1/2 transform -translate-x-1/2">
-                    <span className="inline-flex items-center gap-1 px-3 py-1 sm:px-4 sm:py-1.5 rounded-full bg-gradient-to-r from-purple-600 to-purple-800 text-white text-xs font-bold border border-purple-400/50 shadow-lg">
-                      <SparklesIcon />
-                      {category.badge}
-                    </span>
-                  </div>
-                )}
-
-                {/* Заголовок категории */}
-                <div className="text-center mb-4 sm:mb-6 mt-2 sm:mt-0">
-                  <h2 className="text-lg sm:text-2xl md:text-3xl font-bold text-white mb-2 sm:mb-3">
-                    {category.title}
-                  </h2>
-                  <p className="text-purple-200/80 text-xs sm:text-base max-w-2xl mx-auto">
-                    {category.subtitle}
-                  </p>
+        {/* Категории абонементов */}
+        {Object.keys(subscriptionTypes).length > 0 ? (
+          <div className="space-y-6 sm:space-y-8 max-w-4xl mx-auto">
+            {Object.entries(subscriptionTypes).map(([category, subscriptions]) => {
+              // Маппинг категорий на русские названия
+              const categoryNames: Record<string, string> = {
+                'classic': 'КЛАССИЧЕСКИЙ',
+                'fitness': 'ТОЛЬКО ФИТНЕС',
+                'combo': 'КОМБО-АБОНЕМЕНТ',
+                'КЛАССИЧЕСКИЙ': 'КЛАССИЧЕСКИЙ',
+                'ТОЛЬКО ФИТНЕС': 'ТОЛЬКО ФИТНЕС',
+                'КОМБО-АБОНЕМЕНТ': 'КОМБО-АБОНЕМЕНТ'
+              }
+              const categoryName = categoryNames[category] || category
+              
+              return (
+              <div key={category} className="space-y-3 sm:space-y-4">
+              {/* Заголовок категории */}
+              <div className="flex items-start gap-2 sm:gap-3 mb-3 sm:mb-4">
+                <SparklesIcon />
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-lg sm:text-xl font-bold break-words">{categoryName}</h2>
+                  {(category === 'classic' || category === 'КЛАССИЧЕСКИЙ') && (
+                    <p className="text-xs sm:text-sm text-gray-400 mt-1">Распространяется на все направления студии</p>
+                  )}
+                  {(category === 'fitness' || category === 'ТОЛЬКО ФИТНЕС') && (
+                    <p className="text-xs sm:text-sm text-gray-400 mt-1">Действует на занятия без пилона: растяжку, силу и гибкость, choreo, strip</p>
+                  )}
+                  {(category === 'combo' || category === 'КОМБО-АБОНЕМЕНТ') && (
+                    <p className="text-xs sm:text-sm text-gray-400 mt-1">Лимитированное количество занятий с пилоном и без</p>
+                  )}
                 </div>
+              </div>
 
-                {/* Таблица цен */}
-                <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
-                  {category.subscriptions.map((sub, idx) => (
-                    <div 
-                      key={idx}
-                      onClick={() => openBookingModal(category, sub.lessons)}
-                      className="flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-4 rounded-lg sm:rounded-xl bg-purple-800/30 border border-purple-500/10 hover:border-purple-400/50 hover:bg-purple-800/50 transition-all cursor-pointer active:scale-[0.98]"
+              {/* Карточки абонементов */}
+              <div className="bg-gradient-to-br from-purple-900/40 to-purple-800/20 backdrop-blur-xl rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-purple-500/20">
+
+                <div className="space-y-2 sm:space-y-3 mb-3 sm:mb-4">
+                  {subscriptions.map((subscription) => (
+                    <div
+                      key={subscription.id}
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 bg-white/5 rounded-xl border border-white/10 hover:border-purple-500/50 transition-colors"
                     >
-                      <span className="text-purple-100 text-xs sm:text-base font-medium">
-                        {sub.lessons}
-                      </span>
-                      <span className="text-white text-base sm:text-xl font-bold">
-                        {sub.price} ₽
-                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-base sm:text-lg font-semibold mb-1 break-words">{subscription.name}</div>
+                        <div className="text-xl sm:text-2xl font-bold text-purple-400">
+                          {subscription.price.toLocaleString()} ₽
+                        </div>
+                      </div>
+                      <Button
+                        onClick={() => handleBuyClick(subscription)}
+                        variant="default"
+                        className="w-full sm:w-auto min-h-[44px] text-sm sm:text-base whitespace-nowrap"
+                      >
+                        Начать заниматься
+                      </Button>
                     </div>
                   ))}
                 </div>
 
-                {/* Дополнительная информация */}
-                <div className="text-center text-xs text-purple-200/60 mb-3 sm:mb-4">
+                <div className="text-center text-xs sm:text-sm text-gray-400">
                   Срок действия абонемента — 1 месяц
                 </div>
-
-                {/* Action */}
-                <Button
-                  variant={category.popular ? "default" : "secondary"}
-                  className="w-full text-sm sm:text-base py-2.5 sm:py-3"
-                  onClick={() => openBookingModal(category)}
-                >
-                  Начать заниматься
-                </Button>
               </div>
-            ))}
+              </div>
+              )
+            })}
           </div>
+        ) : (
+          <div className="text-center py-8 sm:py-12">
+            <p className="text-sm sm:text-base text-gray-400">Загрузка абонементов...</p>
+          </div>
+        )}
 
-          {/* Условия */}
-          <div className="bg-purple-900/40 backdrop-blur-xl rounded-2xl border border-purple-500/20 p-6 sm:p-8 mb-8">
-            <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+        {/* Условия использования */}
+        <div className="mt-6 sm:mt-8 max-w-4xl mx-auto">
+          <div className="bg-gradient-to-br from-purple-900/40 to-purple-800/20 backdrop-blur-xl rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-purple-500/20">
+            <h3 className="text-base sm:text-lg font-bold mb-3 sm:mb-4 flex items-center gap-2">
               <InfoIcon />
               Условия использования абонементов
-            </h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {terms.map((term, idx) => (
-                <div key={idx} className="flex items-start gap-3">
-                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-300 text-sm font-bold mt-0.5">
-                    {idx + 1}
-                  </div>
-                  <p className="text-purple-200/80 text-sm leading-relaxed">
-                    {term}
-                  </p>
-                </div>
-              ))}
-            </div>
+            </h3>
+            <ol className="space-y-2 sm:space-y-3 text-xs sm:text-sm text-gray-300 list-decimal list-inside">
+              <li>Абонемент действует 1 месяц с даты первого занятия по нему</li>
+              <li>В случае отпуска или больничного можно воспользоваться «заморозкой» и продлить действие абонемента на срок до 2 недель</li>
+              <li>Отмена или перенос вечернего занятия возможны не позднее, чем за 4 часа до его начала</li>
+              <li>Отмена или перенос утреннего или дневного занятия осуществляются до 21:00 предшествующего дня</li>
+            </ol>
           </div>
 
-          {/* Кнопка Правила */}
-          <div className="text-center mb-8">
-            <Button
-              variant="outline"
-              className="gap-2"
-              onClick={() => setIsRulesModalOpen(true)}
-            >
+          <div className="mt-4 text-center">
+            <button className="flex items-center justify-center gap-2 text-purple-300 hover:text-purple-200 transition-colors">
               <BookOpenIcon />
               Правила пользования абонементом
-            </Button>
+            </button>
           </div>
+        </div>
 
-          {/* Контакты */}
-          <div className="text-center">
-            <div className="inline-block bg-purple-900/40 backdrop-blur-xl rounded-2xl border border-purple-500/20 px-8 py-6">
-              <p className="text-purple-200 mb-2">
-                Остались вопросы? Свяжитесь с нами
-              </p>
+        {/* Контакты */}
+        <div className="mt-6 sm:mt-8 max-w-4xl mx-auto">
+          <div className="bg-gradient-to-br from-purple-900/40 to-purple-800/20 backdrop-blur-xl rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-purple-500/20">
+            <h3 className="text-base sm:text-lg font-bold mb-3 sm:mb-4 flex items-center gap-2">
+              <InfoIcon />
+                  Остались вопросы? Свяжитесь с нами
+            </h3>
               <a 
                 href="tel:+79170379765"
-                className="text-2xl font-bold text-white hover:text-purple-300 transition-colors"
+              className="flex items-center justify-center gap-2 sm:gap-3 w-full py-3 sm:py-4 px-4 sm:px-6 bg-purple-600 hover:bg-purple-700 rounded-xl font-semibold transition-colors min-h-[44px] text-sm sm:text-base"
               >
-                📞 89170379765
-              </a>
-              <p className="text-sm text-purple-200/70 mt-3">
-                Звоните с 10:00 до 21:00 ежедневно
-              </p>
-            </div>
+              <PhoneIcon />
+                  8 917 037 97 65
+            </a>
+            <p className="text-center text-xs sm:text-sm text-gray-400 mt-2 sm:mt-3">
+              Звоните с 10:00 до 21:00 ежедневно
+            </p>
           </div>
-
         </div>
       </div>
 
-      {/* Модальное окно с правилами */}
-      {isRulesModalOpen && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-          onClick={() => setIsRulesModalOpen(false)}
-        >
-          <div 
-            className="bg-purple-900/95 backdrop-blur-xl rounded-2xl border border-purple-500/30 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="sticky top-0 bg-purple-900/95 backdrop-blur-xl border-b border-purple-500/30 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
-              <h2 className="text-lg sm:text-2xl font-bold text-white flex items-center gap-2">
-                <BookOpenIcon />
-                <span className="truncate">Правила пользования</span>
-              </h2>
-              <button
-                onClick={() => setIsRulesModalOpen(false)}
-                className="text-purple-200 hover:text-white transition-colors flex-shrink-0"
-              >
-                <XIcon />
-              </button>
-            </div>
-
-            {/* Content */}
-            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-              {rules.map((rule, idx) => (
-                <div key={idx} className="bg-purple-800/30 rounded-xl p-4 sm:p-6 border border-purple-500/20">
-                  <h3 className="text-base sm:text-lg font-bold text-white mb-3 sm:mb-4">
-                    {rule.title}
-                  </h3>
-                  <div className="space-y-2 sm:space-y-3">
-                    {rule.content.map((paragraph, pIdx) => (
-                      <p key={pIdx} className="text-purple-200/90 text-sm sm:text-base leading-relaxed">
-                        {paragraph}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Footer */}
-            <div className="sticky bottom-0 bg-purple-900/95 backdrop-blur-xl border-t border-purple-500/30 px-4 sm:px-6 py-3 sm:py-4">
-              <Button
-                variant="default"
-                className="w-full"
-                onClick={() => setIsRulesModalOpen(false)}
-              >
-                Понятно
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Модальное окно бронирования абонемента */}
-      {isBookingModalOpen && (
-        <div 
-          className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto"
-          onClick={() => setIsBookingModalOpen(false)}
-        >
-          <div 
-            className="bg-purple-900/95 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-purple-500/30 max-w-md w-full shadow-2xl my-2 sm:my-0"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="sticky top-0 bg-purple-900/95 backdrop-blur-xl border-b border-purple-500/30 px-3 sm:px-6 py-2.5 sm:py-4 flex items-center justify-between rounded-t-xl sm:rounded-t-2xl z-10">
-              <h2 className="text-base sm:text-xl font-bold text-white">
-                Бронирование абонемента
-              </h2>
+      {/* Модальное окно бронирования */}
+      {isBookingModalOpen && selectedSubscription && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end md:items-center justify-center p-4">
+          <div className="bg-gradient-to-br from-gray-900 to-black rounded-t-3xl md:rounded-3xl max-w-lg w-full border border-white/10 max-h-[90vh] md:max-h-[85vh] flex flex-col my-4">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/10 flex-shrink-0">
+              <h2 className="text-lg sm:text-2xl font-bold">Начать заниматься</h2>
               <button
                 onClick={() => setIsBookingModalOpen(false)}
-                className="text-purple-200 hover:text-white transition-colors flex-shrink-0 p-1"
+                className="p-2 hover:bg-white/10 rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
               >
                 <XIcon />
               </button>
             </div>
 
-            {/* Content */}
-            <form onSubmit={handleBookingSubmit} className="p-3 sm:p-6 space-y-3 sm:space-y-4 max-h-[calc(100vh-120px)] sm:max-h-[calc(90vh-80px)] overflow-y-auto">
-              {/* Выбранная категория */}
-              <div className="bg-purple-800/30 rounded-lg p-3 border border-purple-500/20">
-                <p className="text-xs sm:text-sm text-purple-200/70 mb-1">Выбранный тариф:</p>
-                <p className="text-base sm:text-lg font-bold text-white">{selectedCategory}</p>
+            <form onSubmit={handleFormSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-6 overflow-y-auto flex-1 scroll-smooth pb-4 sm:pb-8">
+              <div className="p-3 sm:p-4 bg-purple-600/20 border border-purple-500/50 rounded-xl">
+                <div className="text-xs sm:text-sm text-gray-400 mb-1">Выбранный абонемент:</div>
+                <div className="text-base sm:text-lg font-bold break-words">{selectedSubscription.name}</div>
+                <div className="text-xl sm:text-2xl font-bold text-purple-400 mt-1">
+                  {selectedSubscription.price.toLocaleString()} ₽
+                </div>
+                <div className="text-xs sm:text-sm text-gray-400 mt-1">
+                  Срок действия: {selectedSubscription.validityDays} дней
+                </div>
               </div>
 
-              {/* Имя */}
               <div>
-                <label htmlFor="firstName" className="block text-xs sm:text-sm font-medium text-purple-200 mb-1.5 sm:mb-2">
-                  Имя <span className="text-red-400">*</span>
+                <label className="block text-xs sm:text-sm font-medium mb-2 flex items-center gap-2">
+                  <UserIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                  Имя
                 </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-2.5 sm:pl-3 flex items-center pointer-events-none text-purple-300">
-                    <UserIcon />
-                  </div>
                   <input
                     type="text"
-                    id="firstName"
                     required
                     value={formData.firstName}
                     onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                    className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white placeholder-purple-300/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all text-sm sm:text-base"
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-purple-500 transition-colors text-sm sm:text-base min-h-[44px]"
                     placeholder="Введите ваше имя"
                   />
-                </div>
               </div>
 
-              {/* Фамилия */}
               <div>
-                <label htmlFor="lastName" className="block text-xs sm:text-sm font-medium text-purple-200 mb-1.5 sm:mb-2">
-                  Фамилия <span className="text-red-400">*</span>
+                <label className="block text-xs sm:text-sm font-medium mb-2 flex items-center gap-2">
+                  <UserIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                  Фамилия
                 </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-2.5 sm:pl-3 flex items-center pointer-events-none text-purple-300">
-                    <UserIcon />
-                  </div>
                   <input
                     type="text"
-                    id="lastName"
                     required
                     value={formData.lastName}
                     onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                    className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white placeholder-purple-300/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all text-sm sm:text-base"
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-purple-500 transition-colors text-sm sm:text-base min-h-[44px]"
                     placeholder="Введите вашу фамилию"
                   />
-                </div>
               </div>
 
-              {/* Номер телефона */}
               <div>
-                <label htmlFor="phone" className="block text-xs sm:text-sm font-medium text-purple-200 mb-1.5 sm:mb-2">
-                  Номер телефона <span className="text-red-400">*</span>
+                <label className="block text-xs sm:text-sm font-medium mb-2 flex items-center gap-2">
+                  <PhoneIcon />
+                  Телефон
                 </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-2.5 sm:pl-3 flex items-center pointer-events-none text-purple-300">
-                    <PhoneIcon />
-                  </div>
                   <input
                     type="tel"
-                    id="phone"
                     required
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white placeholder-purple-300/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all text-sm sm:text-base"
-                    placeholder="+7 (___) ___-__-__"
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-purple-500 transition-colors text-sm sm:text-base min-h-[44px]"
+                  placeholder="+7 (900) 123-45-67"
                   />
-                </div>
               </div>
 
-              {/* Адрес студии */}
               <div>
-                <label htmlFor="address" className="block text-xs sm:text-sm font-medium text-purple-200 mb-1.5 sm:mb-2">
-                  Адрес студии <span className="text-red-400">*</span>
+                <label className="block text-xs sm:text-sm font-medium mb-2 flex items-center gap-2">
+                  <MapPinIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                  Адрес зала
                 </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-2.5 sm:pl-3 flex items-center pointer-events-none text-purple-300">
-                    <MapPinIcon />
-                  </div>
                   <select
-                    id="address"
                     required
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all appearance-none text-sm sm:text-base"
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-purple-800/30 border border-purple-500/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all appearance-none text-sm sm:text-base min-h-[44px]"
+                    style={{ color: '#ffffff' }}
                   >
-                    <option value="" className="bg-purple-900">Выберите адрес</option>
-                    <option value="Адрес 1" className="bg-purple-900">Адрес студии 1</option>
-                    <option value="Адрес 2" className="bg-purple-900">Адрес студии 2</option>
+                    <option value="" style={{ color: '#9ca3af', backgroundColor: '#1f2937' }}>Выберите зал</option>
+                    <option value="Волгина, 117А" style={{ color: '#ffffff', backgroundColor: '#1f2937' }}>Волгина, 117А</option>
+                    <option value="ТОЦ Охотный ряд" style={{ color: '#ffffff', backgroundColor: '#1f2937' }}>ТОЦ &quot;Охотный ряд&quot;</option>
                   </select>
-                </div>
               </div>
 
-              {/* Количество занятий */}
               <div>
-                <label htmlFor="lessons" className="block text-xs sm:text-sm font-medium text-purple-200 mb-1.5 sm:mb-2">
-                  Количество занятий <span className="text-red-400">*</span>
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-2.5 sm:pl-3 flex items-center pointer-events-none text-purple-300">
+                <label className="block text-xs sm:text-sm font-medium mb-2 sm:mb-3 flex items-center gap-2">
                     <ListIcon />
-                  </div>
-                  <select
-                    id="lessons"
-                    required
-                    value={formData.lessons}
-                    onChange={(e) => setFormData({ ...formData, lessons: e.target.value })}
-                    className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all appearance-none text-sm sm:text-base"
-                  >
-                    <option value="" className="bg-purple-900">Выберите количество занятий</option>
-                    {selectedCategoryData?.subscriptions.map((sub: any, idx: number) => (
-                      <option key={idx} value={sub.lessons} className="bg-purple-900">
-                        {sub.lessons} - {sub.price} ₽
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Тип записи */}
-              <div className="pt-3 sm:pt-4 border-t border-purple-500/20">
-                <label className="block text-xs sm:text-sm font-medium text-purple-200 mb-2 sm:mb-3">
-                  Тип записи <span className="text-red-400">*</span>
+                  Способ записи
                 </label>
-                <div className="grid grid-cols-1 gap-2 sm:gap-3">
-                {/* Гибкая запись */}
-                <div
-                  onClick={() => setFormData({ ...formData, bookingType: 'flexible', direction: '', weekdays: [] })}
-                  className={`p-3 sm:p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                    formData.bookingType === 'flexible'
-                      ? 'border-purple-400 bg-purple-600/30'
-                      : 'border-purple-500/20 bg-purple-800/20 hover:border-purple-400/50'
-                  }`}
-                >
-                  <div className="flex items-start gap-2 sm:gap-3">
-                    <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                      formData.bookingType === 'flexible' ? 'border-purple-400' : 'border-purple-500/40'
-                    }`}>
-                      {formData.bookingType === 'flexible' && (
-                        <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-purple-400"></div>
-                      )}
+                <div className="space-y-2 sm:space-y-3">
+                  <label className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 bg-white/5 border border-white/10 rounded-xl cursor-pointer hover:border-purple-500/50 transition-colors min-h-[44px]">
+                    <input
+                      type="radio"
+                      name="bookingType"
+                      value="flexible"
+                      checked={formData.bookingType === 'flexible'}
+                      onChange={(e) => setFormData({ ...formData, bookingType: e.target.value as 'flexible' })}
+                      className="mt-1 w-5 h-5 flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold mb-1 text-sm sm:text-base">Гибкая запись</div>
+                      <div className="text-xs sm:text-sm text-gray-400">
+                        Записывайтесь на занятия самостоятельно в удобное время
                     </div>
-                    <div className="flex-1">
-                      <h4 className="text-sm sm:text-base text-white font-semibold mb-0.5 sm:mb-1">Гибкая запись</h4>
-                      <p className="text-xs text-purple-200/70 leading-relaxed">
-                        Вы записываетесь на занятия самостоятельно каждый раз в удобное время и день
-                      </p>
                     </div>
-                  </div>
-                </div>
+                  </label>
 
-                {/* Запись автоматом */}
-                <div
-                  onClick={() => setFormData({ ...formData, bookingType: 'automatic' })}
-                  className={`p-3 sm:p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                    formData.bookingType === 'automatic'
-                      ? 'border-purple-400 bg-purple-600/30'
-                      : 'border-purple-500/20 bg-purple-800/20 hover:border-purple-400/50'
-                  }`}
-                >
-                  <div className="flex items-start gap-2 sm:gap-3">
-                    <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                      formData.bookingType === 'automatic' ? 'border-purple-400' : 'border-purple-500/40'
-                    }`}>
-                      {formData.bookingType === 'automatic' && (
-                        <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-purple-400"></div>
-                      )}
+                  <label className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 bg-white/5 border border-white/10 rounded-xl cursor-pointer hover:border-purple-500/50 transition-colors min-h-[44px]">
+                    <input
+                      type="radio"
+                      name="bookingType"
+                      value="automatic"
+                      checked={formData.bookingType === 'automatic'}
+                      onChange={(e) => setFormData({ ...formData, bookingType: e.target.value as 'automatic' })}
+                      className="mt-1 w-5 h-5 flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold mb-1 text-sm sm:text-base">Автоматическая запись</div>
+                      <div className="text-xs sm:text-sm text-gray-400">
+                        Мы запишем вас на выбранные дни недели автоматически
                     </div>
-                    <div className="flex-1">
-                      <h4 className="text-sm sm:text-base text-white font-semibold mb-0.5 sm:mb-1">Запись автоматом</h4>
-                      <p className="text-xs text-purple-200/70 leading-relaxed">
-                        Вы закрепляетесь за определенным направлением и днями недели
-                      </p>
                     </div>
-                  </div>
+                  </label>
                 </div>
               </div>
-            </div>
 
-            {/* Дополнительные поля для автоматической записи */}
-            {formData.bookingType === 'automatic' && (
-              <div className="grid grid-cols-1 gap-3 sm:gap-4 pt-3 sm:pt-4 border-t border-purple-500/20">
-                {/* Выбор направления */}
-                <div>
-                  <label htmlFor="direction" className="block text-xs sm:text-sm font-medium text-purple-200 mb-1.5 sm:mb-2">
-                    Направление <span className="text-red-400">*</span>
-                  </label>
-                  <select
-                    id="direction"
-                    required={formData.bookingType === 'automatic'}
-                    value={formData.direction}
-                    onChange={(e) => setFormData({ ...formData, direction: e.target.value })}
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-purple-800/30 border border-purple-500/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all appearance-none text-sm"
-                  >
-                    <option value="" className="bg-purple-900">Выберите направление</option>
-                    <option value="pole-fit" className="bg-purple-900">Pole Fit</option>
-                    <option value="pole-exotic" className="bg-purple-900">Pole Exotic</option>
-                    <option value="strength-flexibility" className="bg-purple-900">Сила & Гибкость</option>
-                    <option value="stretching" className="bg-purple-900">Растяжка</option>
-                    <option value="choreo" className="bg-purple-900">Choreo</option>
-                    <option value="strip" className="bg-purple-900">Strip</option>
-                  </select>
-                </div>
+              {formData.bookingType === 'automatic' && (
+                <div className="space-y-4 p-4 bg-purple-900/30 rounded-xl border border-purple-500/30">
+                  <h3 className="font-semibold text-white">Настройки автоматической записи</h3>
+                  
+                  {/* Для всех абонементов: выбор занятий из расписания */}
+                  <div className="space-y-4">
+                    {/* Фильтр по залам */}
+                    <div>
+                      <label className="block text-sm font-medium text-white mb-2">
+                        Фильтр по залам
+                      </label>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedHallFilter('all')}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            selectedHallFilter === 'all'
+                              ? 'bg-purple-600 text-white'
+                              : 'bg-white/5 text-gray-300 hover:bg-white/10'
+                          }`}
+                        >
+                          Все залы
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedHallFilter('volgina')}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            selectedHallFilter === 'volgina'
+                              ? 'bg-purple-600 text-white'
+                              : 'bg-white/5 text-gray-300 hover:bg-white/10'
+                          }`}
+                        >
+                          Волгина
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedHallFilter('ohotny')}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            selectedHallFilter === 'ohotny'
+                              ? 'bg-purple-600 text-white'
+                              : 'bg-white/5 text-gray-300 hover:bg-white/10'
+                          }`}
+                        >
+                          Охотный ряд
+                        </button>
+                      </div>
+                    </div>
 
-                {/* Выбор дней недели */}
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-purple-200 mb-1.5 sm:mb-2">
-                    Дни недели <span className="text-red-400">*</span>
-                  </label>
-                  <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5 sm:gap-2">
-                    {[
-                      { value: 'monday', label: 'Пн' },
-                      { value: 'tuesday', label: 'Вт' },
-                      { value: 'wednesday', label: 'Ср' },
-                      { value: 'thursday', label: 'Чт' },
-                      { value: 'friday', label: 'Пт' },
-                      { value: 'saturday', label: 'Сб' },
-                      { value: 'sunday', label: 'Вс' }
-                    ].map((day) => (
-                      <button
-                        key={day.value}
-                        type="button"
-                        onClick={() => {
-                          const weekdays = formData.weekdays || []
-                          if (weekdays.includes(day.value)) {
-                            setFormData({
-                              ...formData,
-                              weekdays: weekdays.filter(d => d !== day.value)
-                            })
-                          } else {
-                            setFormData({
-                              ...formData,
-                              weekdays: [...weekdays, day.value]
-                            })
-                          }
-                        }}
-                        className={`px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
-                          (formData.weekdays || []).includes(day.value)
-                            ? 'bg-purple-600 text-white border-2 border-purple-400'
-                            : 'bg-purple-800/30 text-purple-200 border-2 border-purple-500/20 hover:border-purple-400/50'
-                        }`}
-                      >
-                        {day.label}
-                      </button>
-                    ))}
+                    {/* Расписание по дням недели */}
+                    {loadingSchedule ? (
+                      <div className="text-center py-8">
+                        <p className="text-purple-300/70">Загрузка расписания...</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4 max-h-96 overflow-y-auto">
+                        {(() => {
+                          const lessonsByDay = getLessonsByDayOfWeek()
+                          const dayNames = { 1: 'Понедельник', 2: 'Вторник', 3: 'Среда', 4: 'Четверг', 5: 'Пятница', 6: 'Суббота', 7: 'Воскресенье' }
+                          const days = [1, 2, 3, 4, 5, 6, 7] as const
+                          
+                          return days.map(day => {
+                            const dayLessons = lessonsByDay[day] || []
+                            if (dayLessons.length === 0) return null
+                            
+                            return (
+                              <div key={day} className="bg-purple-800/20 border border-purple-500/30 rounded-lg p-4">
+                                <h4 className="text-sm font-semibold text-purple-200 mb-3">{dayNames[day]}</h4>
+                                <div className="space-y-2">
+                                  {dayLessons.map(lesson => {
+                                    const direction = directions.find(d => d.id === lesson.direction_id)
+                                    const trainer = trainers.find(t => t.id === lesson.trainer_id)
+                                    const hall = halls.find(h => h.id === lesson.hall_id)
+                                    const isSelected = isLessonSelected(lesson)
+                                    const availableSpots = (lesson.capacity || 0) - (lesson.current_bookings || 0)
+                                    
+                                    return (
+                                      <label
+                                        key={lesson.id}
+                                        className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                                          isSelected
+                                            ? 'bg-purple-600/30 border-purple-400'
+                                            : 'bg-white/5 border-white/10 hover:border-purple-500/50'
+                                        }`}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={isSelected}
+                                          onChange={() => toggleLessonSelection(lesson)}
+                                          className="mt-1"
+                                        />
+                                        <div className="flex-1">
+                                          <div className="flex items-center justify-between mb-1">
+                                            <span className="text-sm font-medium text-white">
+                                              {direction?.name || 'Неизвестное направление'}
+                                            </span>
+                                            <span className="text-xs text-purple-300">
+                                              {lesson.start_time} - {lesson.end_time}
+                                            </span>
+                                          </div>
+                                          <div className="text-xs text-gray-400 space-y-0.5">
+                                            {trainer && (
+                                              <div className="flex items-center gap-2">
+                                                <UserIcon className="w-4 h-4" />
+                                                <span>{trainer.name} {trainer.last_name || ''}</span>
+                                              </div>
+                                            )}
+                                            {hall && (
+                                              <div className="flex items-center gap-2">
+                                                <MapPinIcon className="w-4 h-4" />
+                                                <span>{hall.name} - {hall.address}</span>
+                                              </div>
+                                            )}
+                                            <div className="flex items-center gap-2">
+                                              <TicketIcon className="w-4 h-4" />
+                                              <span>Свободно мест: {availableSpots} из {lesson.capacity || 0}</span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </label>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            )
+                          })
+                        })()}
+                        
+                        {Object.keys(getLessonsByDayOfWeek()).length === 0 && (
+                          <div className="text-center py-8 border-2 border-dashed border-purple-500/30 rounded-lg">
+                            <p className="text-purple-300/70 mb-2">Нет доступных занятий</p>
+                            <p className="text-xs text-purple-400/50">Попробуйте изменить фильтр по залам</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Информация о выбранных занятиях */}
+                    {formData.autoLessons.length > 0 && (
+                      <div className="p-3 bg-green-900/20 border border-green-500/30 rounded-lg">
+                        <p className="text-sm text-green-300 font-medium mb-1">
+                          ✓ Выбрано занятий: {formData.autoLessons.length}
+                        </p>
+                        <p className="text-xs text-green-200/70">
+                          Вы будете автоматически записаны на эти занятия каждую неделю в рамках вашего абонемента
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="text-xs text-purple-200/70">
+                      💡 Выберите занятия из расписания, на которые хотите записаться автоматически
+                    </div>
                   </div>
-                  <p className="text-xs text-purple-200/60 mt-1.5 sm:mt-2">
-                    Выберите дни, в которые вы планируете посещать занятия
-                  </p>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Кнопки */}
-            <div className="flex gap-2 sm:gap-3 pt-3 sm:pt-4 sticky bottom-0 bg-purple-900/95 -mx-3 sm:-mx-6 px-3 sm:px-6 py-3 sm:py-4 border-t border-purple-500/30 rounded-b-xl sm:rounded-b-2xl">
-                <Button
+              <div className="space-y-2 sm:space-y-3 pt-3 sm:pt-4">
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full py-3 sm:py-4 px-4 sm:px-6 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-xl font-semibold transition-colors text-sm sm:text-base min-h-[44px]"
+                >
+                  {isSubmitting ? 'Отправка...' : 'Отправить заявку'}
+                </button>
+
+                <button
                   type="button"
-                  variant="outline"
-                  className="flex-1 text-sm sm:text-base py-2 sm:py-2.5"
                   onClick={() => setIsBookingModalOpen(false)}
+                  className="w-full py-2.5 sm:py-3 px-4 sm:px-6 bg-white/5 hover:bg-white/10 rounded-xl font-semibold transition-colors text-sm sm:text-base min-h-[44px]"
                 >
                   Отмена
-                </Button>
-                <Button
-                  type="submit"
-                  variant="default"
-                  className="flex-1 text-sm sm:text-base py-2 sm:py-2.5"
-                >
-                  Отправить заявку
-                </Button>
+                </button>
+              </div>
+
+              <div className="text-xs text-gray-500 text-center">
+                После отправки заявка будет отправлена администратору на подтверждение.
+                Вы получите уведомление когда абонемент станет активным.
               </div>
             </form>
           </div>
         </div>
-      )}
+        )}
+
+        {/* Модальное окно успеха */}
+        {isSuccessModalOpen && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end md:items-center justify-center p-0 md:p-4">
+            <div className="bg-gradient-to-br from-purple-900/95 to-purple-800/95 backdrop-blur-xl rounded-t-3xl md:rounded-3xl max-w-md w-full border border-purple-500/30 shadow-2xl max-h-[90vh] md:max-h-[85vh] flex flex-col">
+              <div className="p-6 sm:p-8 text-center flex-1 flex flex-col justify-center">
+                {/* Иконка успеха */}
+                <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 sm:mb-6 rounded-full bg-green-500/20 border-4 border-green-500 flex items-center justify-center">
+                  <svg className="w-8 h-8 sm:w-10 sm:h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+
+                {/* Заголовок */}
+                <h2 className="text-xl sm:text-2xl font-bold text-white mb-3 sm:mb-4">
+                  Заявка отправлена!
+                </h2>
+
+                {/* Описание */}
+                <p className="text-sm sm:text-base text-gray-300 mb-2 sm:mb-3">
+                  Ваша заявка на абонемент принята и ожидает подтверждения администратором.
+                </p>
+                <p className="text-xs sm:text-sm text-purple-300 mb-6 sm:mb-8">
+                  Статус можно посмотреть в личном кабинете
+                </p>
+
+                {/* Кнопки */}
+                <div className="space-y-2 sm:space-y-3">
+                  <Button
+                    onClick={() => {
+                      setIsSuccessModalOpen(false)
+                      router.push('/profile')
+                    }}
+                    variant="default"
+                    className="w-full py-3 sm:py-4 text-sm sm:text-lg min-h-[44px]"
+                  >
+                    Перейти в личный кабинет
+                  </Button>
+                  <button
+                    onClick={() => setIsSuccessModalOpen(false)}
+                    className="w-full py-2.5 sm:py-3 text-xs sm:text-sm text-gray-400 hover:text-white transition-colors min-h-[44px]"
+                  >
+                    Закрыть
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
     </BeamsBackground>
   )
 }
-

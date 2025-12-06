@@ -1,31 +1,17 @@
-/**
- * Главный файл сервера
- * Backend для Telegram-бота студии "Геометрия"
- */
-
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const cron = require('node-cron');
+const db = require('./config/database');
 
-const { getDatabase } = require('./config/database');
-const telegramConfig = require('./config/telegram');
-
-// Импорт роутов (будут созданы позже)
-// const authRoutes = require('./routes/auth');
-// const userRoutes = require('./routes/users');
-// const lessonsRoutes = require('./routes/lessons');
-// const bookingsRoutes = require('./routes/bookings');
-// const subscriptionsRoutes = require('./routes/subscriptions');
-
-// Импорт бота
-// const bot = require('./bot');
-
+// Инициализация
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware
-app.use(cors());
+// Middleware - разрешаем запросы с любых портов в режиме разработки
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://localhost:3002', 'http://localhost:3003'],
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -35,128 +21,133 @@ app.use((req, res, next) => {
   next();
 });
 
-// Проверка работоспособности
+// Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
-    message: 'Сервер работает',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
 // API Routes
-app.get('/api/v1', (req, res) => {
+app.get('/api', (req, res) => {
   res.json({
-    message: 'API студии танцев "Геометрия"',
+    message: 'Геометрия API v1.0',
     version: '1.0.0',
     endpoints: {
-      auth: '/api/v1/auth',
-      users: '/api/v1/users',
-      lessons: '/api/v1/lessons',
-      bookings: '/api/v1/bookings',
-      subscriptions: '/api/v1/subscriptions',
-      halls: '/api/v1/halls',
-      directions: '/api/v1/directions'
+      auth: '/api/auth',
+      directions: '/api/directions',
+      schedule: '/api/schedule',
+      bookings: '/api/bookings',
+      subscriptions: '/api/subscriptions',
+      halls: '/api/halls',
+      rental: '/api/rental',
+      profile: '/api/profile',
+      admin: '/api/admin'
     }
   });
 });
 
-// Подключение роутов (раскомментировать после создания)
-// app.use('/api/v1/auth', authRoutes);
-// app.use('/api/v1/users', userRoutes);
-// app.use('/api/v1/lessons', lessonsRoutes);
-// app.use('/api/v1/bookings', bookingsRoutes);
-// app.use('/api/v1/subscriptions', subscriptionsRoutes);
+// Подключаем роуты
+const authRoutes = require('./routes/auth');
+const directionsRoutes = require('./routes/directions');
+const hallsRoutes = require('./routes/halls');
+const subscriptionTypesRoutes = require('./routes/subscriptionTypes');
+const subscriptionsRoutes = require('./routes/subscriptions');
+const lessonsRoutes = require('./routes/lessons');
+const trainersRoutes = require('./routes/trainers');
+const bookingsRoutes = require('./routes/bookings');
+const recurringLessonsRoutes = require('./routes/recurringLessons');
+const statsRoutes = require('./routes/stats');
+const rentalRoutes = require('./routes/rental');
+const pricesRoutes = require('./routes/prices');
+const notificationsRoutes = require('./routes/notifications');
+// const profileRoutes = require('./routes/profile');
+// const adminRoutes = require('./routes/admin');
 
-// Обработка ошибок 404
+app.use('/api/auth', authRoutes);
+app.use('/api/directions', directionsRoutes);
+app.use('/api/halls', hallsRoutes);
+app.use('/api/subscription-types', subscriptionTypesRoutes);
+app.use('/api/subscriptions', subscriptionsRoutes);
+app.use('/api/lessons', lessonsRoutes);
+app.use('/api/trainers', trainersRoutes);
+app.use('/api/bookings', bookingsRoutes);
+app.use('/api/recurring-lessons', recurringLessonsRoutes);
+app.use('/api/stats', statsRoutes);
+app.use('/api/rental', rentalRoutes);
+app.use('/api/prices', pricesRoutes);
+app.use('/api/notifications', notificationsRoutes);
+// app.use('/api/rental', rentalRoutes);
+// app.use('/api/profile', profileRoutes);
+// app.use('/api/admin', adminRoutes);
+
+// 404 handler
 app.use((req, res) => {
   res.status(404).json({ 
-    error: 'Endpoint не найден',
+    error: 'Not Found',
+    message: 'Запрашиваемый endpoint не найден',
     path: req.path
   });
 });
 
-// Глобальный обработчик ошибок
+// Error handler
 app.use((err, req, res, next) => {
-  console.error('❌ Ошибка:', err);
-  res.status(err.status || 500).json({
-    error: err.message || 'Внутренняя ошибка сервера',
+  console.error('Error:', err);
+  res.status(err.status || 500).json({ 
+    error: err.message || 'Internal Server Error',
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
   });
 });
 
-// Запуск Telegram бота
-function startTelegramBot() {
-  console.log('🤖 Запуск Telegram бота...');
-  // const bot = require('./bot');
-  console.log('✅ Telegram бот запущен');
-}
-
-// Настройка cron задач для уведомлений
-function setupCronJobs() {
-  console.log('⏰ Настройка планировщика задач...');
-  
-  // Каждые 5 минут проверяем уведомления
-  cron.schedule('*/5 * * * *', () => {
-    console.log('🔔 Проверка уведомлений...');
-    // Здесь будет логика отправки уведомлений
-  });
-  
-  // Каждый день в 10:00 проверяем истекающие абонементы
-  cron.schedule('0 10 * * *', () => {
-    console.log('📅 Проверка истекающих абонементов...');
-    // Здесь будет логика проверки абонементов
-  });
-  
-  console.log('✅ Планировщик задач настроен');
-}
-
-// Инициализация сервера
-async function startServer() {
-  try {
-    // Проверка подключения к БД
-    const db = getDatabase();
-    console.log('✅ База данных подключена');
-    
-    // Запуск HTTP сервера
-    app.listen(PORT, () => {
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log(`🚀 Сервер запущен на порту ${PORT}`);
-      console.log(`📍 http://localhost:${PORT}`);
-      console.log(`🏥 Health check: http://localhost:${PORT}/health`);
-      console.log(`🔌 API: http://localhost:${PORT}/api/v1`);
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    });
-    
-    // Запуск бота
-    startTelegramBot();
-    
-    // Настройка cron задач
-    setupCronJobs();
-    
-  } catch (error) {
-    console.error('❌ Ошибка при запуске сервера:', error);
-    process.exit(1);
-  }
-}
-
 // Graceful shutdown
 process.on('SIGINT', () => {
-  console.log('\n🛑 Получен сигнал SIGINT, завершение работы...');
-  const { closeDatabase } = require('./config/database');
-  closeDatabase();
+  console.log('Получен сигнал SIGINT. Закрываем сервер...');
+  if (db) db.close();
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-  console.log('\n🛑 Получен сигнал SIGTERM, завершение работы...');
-  const { closeDatabase } = require('./config/database');
-  closeDatabase();
+  console.log('Получен сигнал SIGTERM. Закрываем сервер...');
+  if (db) db.close();
   process.exit(0);
 });
 
-// Запуск
-startServer();
+// Автоматическая очистка прошедших занятий при старте (опционально)
+if (process.env.AUTO_CLEANUP_ON_START === 'true') {
+  try {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    
+    const deletePastBookingsStmt = db.prepare('DELETE FROM bookings WHERE lesson_id IN (SELECT id FROM lessons WHERE lesson_date < ?)');
+    const deletePastLessonsStmt = db.prepare('DELETE FROM lessons WHERE lesson_date < ?');
+    
+    const deletedBookings = deletePastBookingsStmt.run(todayStr);
+    const deletedLessons = deletePastLessonsStmt.run(todayStr);
+    
+    if (deletedLessons.changes > 0) {
+      console.log(`🧹 Автоматическая очистка: удалено ${deletedLessons.changes} прошедших занятий и ${deletedBookings.changes} бронирований`);
+    }
+  } catch (error) {
+    console.error('⚠️ Ошибка при автоматической очистке:', error.message);
+  }
+}
 
-module.exports = app;
+// Запуск сервера
+app.listen(PORT, () => {
+  console.log('');
+  console.log('🚀 Сервер запущен!');
+  console.log(`📡 API: http://localhost:${PORT}`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🗄️  Database: ${process.env.DATABASE_URL}`);
+  if (process.env.AUTO_CLEANUP_ON_START === 'true') {
+    console.log(`🧹 Автоматическая очистка прошедших занятий: включена`);
+  }
+  console.log('');
+});
+
+// Экспортируем db для использования в других модулях
+module.exports = { app, db };
 
