@@ -1,4 +1,5 @@
 import { authAPI, User } from './api'
+import { syncUserWithSupabase } from './supabase'
 
 /**
  * Получить initData из Telegram WebApp
@@ -119,6 +120,21 @@ export async function initTelegramAuth(): Promise<{ success: boolean; user?: Use
         name: response.user.firstName,
         isAdmin: response.user.isAdmin
       })
+      
+      // Синхронизируем пользователя с Supabase (если настроен)
+      if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+        try {
+          const tg = (window as any).Telegram?.WebApp
+          if (tg?.initDataUnsafe?.user) {
+            await syncUserWithSupabase(tg.initDataUnsafe.user)
+            console.log('✅ Пользователь синхронизирован с Supabase')
+          }
+        } catch (error) {
+          console.warn('⚠️ Ошибка синхронизации с Supabase:', error)
+          // Не прерываем процесс авторизации, если Supabase недоступен
+        }
+      }
+      
       return { success: true, user: response.user }
     }
 
