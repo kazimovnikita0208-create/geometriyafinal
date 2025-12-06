@@ -1,19 +1,38 @@
 // API Configuration
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+// Используем прокси для обхода CORS
+// В production всегда используем Next.js API route как прокси
+// В development можно использовать прямой URL к backend
+const isDevelopment = typeof window !== 'undefined' && 
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+const USE_PROXY = !isDevelopment; // Всегда используем прокси в production
+const API_URL = USE_PROXY 
+  ? '/api/proxy' // Используем прокси в production
+  : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'); // Прямой URL в development
 
 // API Client
 class ApiClient {
   private baseURL: string;
+  private useProxy: boolean;
 
-  constructor(baseURL: string) {
+  constructor(baseURL: string, useProxy: boolean = false) {
     this.baseURL = baseURL;
+    this.useProxy = useProxy;
   }
 
   async request<T>(endpoint: string, options?: RequestInit & { timeout?: number }): Promise<T> {
-    // Убираем двойной слэш, если baseURL заканчивается на /, а endpoint начинается с /
-    const baseURL = this.baseURL.endsWith('/') ? this.baseURL.slice(0, -1) : this.baseURL;
-    const endpointPath = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-    const url = `${baseURL}${endpointPath}`;
+    // Если используем прокси, endpoint уже содержит полный путь к API
+    let url: string;
+    
+    if (this.useProxy) {
+      // Для прокси: /api/proxy + endpoint (например: /api/proxy/api/subscriptions/requests)
+      const endpointPath = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+      url = `${this.baseURL}${endpointPath}`;
+    } else {
+      // Для прямого подключения: baseURL + endpoint
+      const baseURL = this.baseURL.endsWith('/') ? this.baseURL.slice(0, -1) : this.baseURL;
+      const endpointPath = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+      url = `${baseURL}${endpointPath}`;
+    }
     
     // Определяем таймаут: по умолчанию 5 секунд, но можно переопределить
     const timeout = options?.timeout ?? 5000;
@@ -85,7 +104,7 @@ class ApiClient {
 }
 
 // Создаем единственный экземпляр API клиента
-const api = new ApiClient(API_URL);
+const api = new ApiClient(API_URL, USE_PROXY);
 
 // API методы
 export const directionsAPI = {
