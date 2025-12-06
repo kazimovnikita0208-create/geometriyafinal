@@ -8,45 +8,52 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware - CORS конфигурация
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:3002',
-  'http://localhost:3003',
-  // Vercel домены (динамически разрешаем все *.vercel.app)
-  /^https:\/\/.*\.vercel\.app$/,
-  // Кастомные домены (если есть)
-  process.env.FRONTEND_URL
-].filter(Boolean); // Убираем undefined значения
-
-// CORS конфигурация - разрешаем все для production
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Разрешаем запросы без origin (например, Postman, мобильные приложения)
-    if (!origin) return callback(null, true);
-    
-    // Проверяем, разрешен ли origin
-    const isAllowed = allowedOrigins.some(allowedOrigin => {
-      if (typeof allowedOrigin === 'string') {
-        return origin === allowedOrigin;
-      } else if (allowedOrigin instanceof RegExp) {
-        return allowedOrigin.test(origin);
-      }
-      return false;
-    });
-    
-    if (isAllowed) {
-      callback(null, true);
+// На Vercel разрешаем все origins для гибкости
+const corsMiddleware = (req, res, next) => {
+  const origin = req.headers.origin;
+  
+  // Разрешаем все origins на Vercel
+  if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+    if (origin) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
     } else {
-      // В production разрешаем все для гибкости
-      if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
-        console.log(`✅ CORS: Разрешен запрос с origin: ${origin}`);
-        callback(null, true);
-      } else {
-        console.warn(`⚠️  CORS: Запрос с неразрешенного origin: ${origin}`);
-        callback(null, true); // Разрешаем для отладки
-      }
+      res.setHeader('Access-Control-Allow-Origin', '*');
     }
-  },
+  } else {
+    // Для локальной разработки проверяем разрешенные origins
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:3002',
+      'http://localhost:3003',
+      process.env.FRONTEND_URL
+    ].filter(Boolean);
+    
+    if (!origin || allowedOrigins.includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin || '*');
+    }
+  }
+  
+  // Устанавливаем все необходимые заголовки для всех запросов
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Access-Control-Request-Method, Access-Control-Request-Headers');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Max-Age', '86400'); // 24 часа
+  
+  // Для OPTIONS запросов сразу возвращаем ответ
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+  
+  next();
+};
+
+// Применяем CORS middleware ДО всех других middleware
+app.use(corsMiddleware);
+
+// Дополнительно используем cors для совместимости
+app.use(cors({
+  origin: true, // Разрешаем все origins
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: [
@@ -61,20 +68,7 @@ const corsOptions = {
   exposedHeaders: ['Content-Type', 'Authorization'],
   preflightContinue: false,
   optionsSuccessStatus: 204
-};
-
-// Применяем CORS до всех маршрутов
-app.use(cors(corsOptions));
-
-// Явная обработка preflight запросов - ДО всех других маршрутов
-app.options('*', (req, res) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Access-Control-Request-Method, Access-Control-Request-Headers');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Max-Age', '86400'); // 24 часа
-  res.sendStatus(204);
-});
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
