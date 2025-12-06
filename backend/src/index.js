@@ -174,19 +174,22 @@ if (process.env.AUTO_CLEANUP_ON_START === 'true') {
   }
 }
 
-// Запуск сервера
-app.listen(PORT, () => {
-  console.log('');
-  console.log('🚀 Сервер запущен!');
-  console.log(`📡 API: http://localhost:${PORT}`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🗄️  Database: ${process.env.DATABASE_URL}`);
-  if (process.env.AUTO_CLEANUP_ON_START === 'true') {
-    console.log(`🧹 Автоматическая очистка прошедших занятий: включена`);
-  }
-  console.log('');
-});
+// Запуск сервера (только для локальной разработки)
+if (process.env.VERCEL !== '1') {
+  app.listen(PORT, () => {
+    console.log('');
+    console.log('🚀 Сервер запущен!');
+    console.log(`📡 API: http://localhost:${PORT}`);
+    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🗄️  Database: ${process.env.DATABASE_URL}`);
+    if (process.env.AUTO_CLEANUP_ON_START === 'true') {
+      console.log(`🧹 Автоматическая очистка прошедших занятий: включена`);
+    }
+    console.log('');
+  });
+}
 
-// Экспортируем db для использования в других модулях
-module.exports = { app, db };
+// Экспортируем app для Vercel serverless functions
+// Для локальной разработки также экспортируем db
+module.exports = app;
 
