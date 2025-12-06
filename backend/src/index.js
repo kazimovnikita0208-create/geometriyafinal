@@ -60,6 +60,28 @@ app.use((req, res, next) => {
   next();
 });
 
+// Корневой маршрут - перенаправляем на /api
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Геометрия API v1.0',
+    version: '1.0.0',
+    status: 'ok',
+    endpoints: {
+      api: '/api',
+      health: '/health',
+      auth: '/api/auth',
+      directions: '/api/directions',
+      schedule: '/api/schedule',
+      bookings: '/api/bookings',
+      subscriptions: '/api/subscriptions',
+      halls: '/api/halls',
+      rental: '/api/rental',
+      profile: '/api/profile',
+      admin: '/api/admin'
+    }
+  });
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ 
