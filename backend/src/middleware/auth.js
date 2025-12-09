@@ -101,25 +101,49 @@ async function authMiddleware(req, res, next) {
     // 🧪 ТЕСТОВЫЙ РЕЖИМ: Поддержка тестового токена для разработки
     if (token === 'test-token-for-development' && (process.env.NODE_ENV === 'development' || process.env.ALLOW_TEST_TOKEN === 'true')) {
       console.log('🧪 Используется тестовый токен для разработки');
-      // Ищем или создаем тестового пользователя
-      let testUser = await dbAdapter.get('users', { telegram_id: '999999999' });
+      console.log('🔍 ALLOW_TEST_TOKEN:', process.env.ALLOW_TEST_TOKEN);
+      console.log('🔍 NODE_ENV:', process.env.NODE_ENV);
       
-      if (!testUser) {
-        testUser = await dbAdapter.insert('users', {
-          telegram_id: '999999999',
-          username: 'test_user',
-          first_name: 'Тестовый',
-          last_name: 'Пользователь',
-          is_admin: true,
-          is_active: true,
-          notifications_enabled: true
+      try {
+        // Ищем или создаем тестового пользователя
+        let testUser = await dbAdapter.get('users', { telegram_id: '999999999' });
+        console.log('🔍 Поиск тестового пользователя:', testUser ? 'найден' : 'не найден');
+        
+        if (!testUser) {
+          console.log('📝 Создание тестового пользователя...');
+          testUser = await dbAdapter.insert('users', {
+            telegram_id: '999999999',
+            username: 'test_user',
+            first_name: 'Тестовый',
+            last_name: 'Пользователь',
+            is_admin: true,
+            is_active: true,
+            notifications_enabled: true
+          });
+          console.log('✅ Создан тестовый пользователь для тестового токена, ID:', testUser?.id);
+        } else {
+          console.log('✅ Тестовый пользователь найден, ID:', testUser.id);
+        }
+        
+        if (!testUser || !testUser.id) {
+          console.error('❌ Ошибка: тестовый пользователь не создан или не имеет ID');
+          return res.status(500).json({ 
+            error: 'Internal Server Error',
+            message: 'Failed to create test user' 
+          });
+        }
+        
+        req.user = testUser;
+        req.userId = testUser.id;
+        console.log('✅ Тестовый пользователь установлен в request, userId:', req.userId);
+        return next();
+      } catch (error) {
+        console.error('❌ Ошибка при работе с тестовым пользователем:', error);
+        return res.status(500).json({ 
+          error: 'Internal Server Error',
+          message: error.message || 'Failed to process test token' 
         });
-        console.log('✅ Создан тестовый пользователь для тестового токена');
       }
-      
-      req.user = testUser;
-      req.userId = testUser.id;
-      return next();
     }
 
     // Верифицируем токен

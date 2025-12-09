@@ -57,6 +57,9 @@ class ApiClient {
           ...config.headers,
           Authorization: `Bearer ${token}`,
         };
+        console.log(`🔑 API Client: Token added to request for ${endpoint}`);
+      } else {
+        console.warn(`⚠️ API Client: No token found for ${endpoint}`);
       }
     }
 
