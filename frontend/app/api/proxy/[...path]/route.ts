@@ -59,7 +59,9 @@ async function handleRequest(
 ) {
   try {
     // Получаем URL backend из переменных окружения
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    let backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    // Убираем завершающий слэш из backendUrl
+    backendUrl = backendUrl.endsWith('/') ? backendUrl.slice(0, -1) : backendUrl;
     
     // Собираем путь к API endpoint
     const path = params.path ? `/${params.path.join('/')}` : '';
@@ -67,6 +69,7 @@ async function handleRequest(
     
     // Логируем для отладки
     console.log(`🔵 Proxy: ${method} ${path} → ${url}`);
+    console.log(`📋 Proxy: Backend URL: ${backendUrl}`);
     
     // Получаем query параметры из оригинального запроса
     const searchParams = request.nextUrl.searchParams.toString();
@@ -91,6 +94,16 @@ async function handleRequest(
     const authHeader = request.headers.get('Authorization');
     if (authHeader) {
       headers['Authorization'] = authHeader;
+      console.log(`🔑 Proxy: Authorization header found: ${authHeader.substring(0, 30)}...`);
+    } else {
+      console.log(`⚠️ Proxy: No Authorization header found`);
+      console.log(`📋 Proxy: All request headers:`, Object.fromEntries(request.headers.entries()));
+    }
+    
+    // Также проверяем cookie (на случай, если токен там)
+    const cookies = request.headers.get('cookie');
+    if (cookies) {
+      headers['Cookie'] = cookies;
     }
     
     // Делаем запрос к backend
@@ -101,7 +114,18 @@ async function handleRequest(
     });
     
     // Получаем данные из ответа
-    const data = await response.json().catch(() => ({}));
+    let data: any;
+    try {
+      const text = await response.text();
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      data = {};
+    }
+    
+    // Логируем ответ для отладки
+    if (!response.ok) {
+      console.log(`❌ Proxy error: ${response.status} ${response.statusText}`, data);
+    }
     
     // Возвращаем ответ с правильными заголовками
     return NextResponse.json(data, {

@@ -136,7 +136,10 @@ async function authMiddleware(req, res, next) {
         req.user = testUser;
         req.userId = testUser.id;
         console.log('✅ Тестовый пользователь установлен в request, userId:', req.userId);
+        console.log('➡️ AuthMiddleware: Вызываю next() для тестового токена. Выполнение должно остановиться здесь.');
         return next();
+        // Этот код не должен выполниться, но если выполнится - это ошибка
+        console.error('❌ КРИТИЧЕСКАЯ ОШИБКА: Код продолжил выполнение после return next() в блоке тестового токена!');
       } catch (error) {
         console.error('❌ Ошибка при работе с тестовым пользователем:', error);
         return res.status(500).json({ 
@@ -146,7 +149,8 @@ async function authMiddleware(req, res, next) {
       }
     }
 
-    // Верифицируем токен
+    // Верифицируем токен (этот код не должен выполниться для тестового токена)
+    console.log('➡️ AuthMiddleware: Переход к обычной верификации токена (не должно быть для тестового токена)');
     const decoded = verifyToken(token);
     
     if (!decoded) {
