@@ -1,19 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
+const dbAdapter = require('../config/database-adapter');
 const { optionalAuthMiddleware } = require('../middleware/auth');
 
 /**
  * GET /api/subscription-types
  * Получить все типы абонементов, сгруппированные по категориям
  */
-router.get('/', optionalAuthMiddleware, (req, res) => {
+router.get('/', optionalAuthMiddleware, async (req, res) => {
   try {
-    const subscriptionTypes = db.prepare(`
-      SELECT * FROM subscription_types 
-      WHERE is_active = 1 
-      ORDER BY category ASC, price ASC
-    `).all();
+    const subscriptionTypes = await dbAdapter.select('subscription_types', 
+      { is_active: 1 }, 
+      { orderBy: 'category, price' }
+    );
 
     // Группируем по категориям
     const groupedTypes = {};

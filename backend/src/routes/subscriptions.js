@@ -1,25 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
+const dbAdapter = require('../config/database-adapter');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 
-// Убеждаемся, что таблица subscription_freezes существует
-try {
-  db.prepare(`
-    CREATE TABLE IF NOT EXISTS subscription_freezes (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      subscription_id INTEGER NOT NULL,
-      freeze_start_date DATE NOT NULL,
-      freeze_end_date DATE NOT NULL,
-      freeze_days INTEGER NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (subscription_id) REFERENCES subscriptions(id)
-    )
-  `).run();
-  console.log('✅ Таблица subscription_freezes проверена/создана');
-} catch (error) {
-  console.error('⚠️ Ошибка при создании таблицы subscription_freezes:', error);
-}
+// Таблица subscription_freezes должна быть создана через миграции Supabase
+// В production (Vercel) SQLite не используется, поэтому не пытаемся создать таблицу здесь
+console.log('✅ Таблица subscription_freezes должна существовать в Supabase');
 
 // Создать заявку на абонемент (для клиентов)
 router.post('/', authMiddleware, async (req, res) => {
