@@ -17,6 +17,14 @@ app.use((req, res, next) => {
   // Логируем все запросы для отладки
   console.log(`📥 ${method} ${path} | Origin: ${origin || 'none'}`);
   
+  // 🔍 ДИАГНОСТИКА: Логируем Authorization header
+  const authHeader = req.headers.authorization;
+  if (authHeader) {
+    console.log(`🔑 Authorization header: ${authHeader.substring(0, 40)}...`);
+  } else {
+    console.log(`⚠️ No Authorization header`);
+  }
+  
   // Разрешаем все origins (особенно важно для Vercel)
   if (origin) {
     res.setHeader('Access-Control-Allow-Origin', origin);
