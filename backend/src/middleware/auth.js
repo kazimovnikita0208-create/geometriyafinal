@@ -98,6 +98,14 @@ async function authMiddleware(req, res, next) {
 
     const token = authHeader.substring(7); // Убираем "Bearer "
 
+    // 🔍 ДИАГНОСТИКА: Логируем все данные для отладки
+    console.log('🔍 AuthMiddleware: Получен токен:', token.substring(0, 30) + '...');
+    console.log('🔍 AuthMiddleware: NODE_ENV =', process.env.NODE_ENV);
+    console.log('🔍 AuthMiddleware: ALLOW_TEST_TOKEN =', process.env.ALLOW_TEST_TOKEN);
+    console.log('🔍 AuthMiddleware: Проверка токена:', token === 'test-token-for-development' ? 'СОВПАДАЕТ' : 'НЕ СОВПАДАЕТ');
+    console.log('🔍 AuthMiddleware: Условие 1 (NODE_ENV):', process.env.NODE_ENV === 'development');
+    console.log('🔍 AuthMiddleware: Условие 2 (ALLOW_TEST_TOKEN):', process.env.ALLOW_TEST_TOKEN === 'true');
+
     // 🧪 ТЕСТОВЫЙ РЕЖИМ: Поддержка тестового токена для разработки
     if (token === 'test-token-for-development' && (process.env.NODE_ENV === 'development' || process.env.ALLOW_TEST_TOKEN === 'true')) {
       console.log('🧪 Используется тестовый токен для разработки');
