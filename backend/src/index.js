@@ -133,7 +133,8 @@ const authRoutes = require('./routes/auth');
 const directionsRoutes = require('./routes/directions');
 const hallsRoutes = require('./routes/halls');
 const subscriptionTypesRoutes = require('./routes/subscriptionTypes');
-const subscriptionsRoutes = require('./routes/subscriptions');
+// ВРЕМЕННО ОТКЛЮЧЕНО: subscriptions.js требует полной переработки для Supabase
+// const subscriptionsRoutes = require('./routes/subscriptions');
 const lessonsRoutes = require('./routes/lessons');
 const trainersRoutes = require('./routes/trainers');
 const bookingsRoutes = require('./routes/bookings');
@@ -149,7 +150,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/directions', directionsRoutes);
 app.use('/api/halls', hallsRoutes);
 app.use('/api/subscription-types', subscriptionTypesRoutes);
-app.use('/api/subscriptions', subscriptionsRoutes);
+// ВРЕМЕННО ОТКЛЮЧЕНО: subscriptions.js требует полной переработки для Supabase
+// app.use('/api/subscriptions', subscriptionsRoutes);
 app.use('/api/lessons', lessonsRoutes);
 app.use('/api/trainers', trainersRoutes);
 app.use('/api/bookings', bookingsRoutes);
