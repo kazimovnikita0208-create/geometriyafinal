@@ -1,29 +1,26 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../config/database');
+const dbAdapter = require('../config/database-adapter');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 
 // Получить всех тренеров
-router.get('/', authMiddleware, (req, res) => {
+router.get('/', authMiddleware, async (req, res) => {
   try {
     // Админ видит всех тренеров, обычные пользователи - только активных
-    const isAdmin = req.user?.is_admin === 1;
-    const whereClause = isAdmin ? '' : 'WHERE is_active = 1';
+    const isAdmin = req.user?.is_admin === 1 || req.user?.is_admin === true;
     
-    const stmt = db.prepare(`
-      SELECT id, name, last_name, phone, email, directions, bio, is_active
-      FROM trainers
-      ${whereClause}
-      ORDER BY name ASC
-    `);
+    const trainers = isAdmin 
+      ? await dbAdapter.select('trainers', {})
+      : await dbAdapter.select('trainers', { is_active: true });
     
-    const trainers = stmt.all();
-    
-    // Парсим JSON поля
+    // Форматируем данные (в Supabase JSON поля уже распарсены)
     const formattedTrainers = trainers.map(trainer => ({
       ...trainer,
-      directions: trainer.directions ? JSON.parse(trainer.directions) : []
+      directions: Array.isArray(trainer.directions) ? trainer.directions : (trainer.directions ? JSON.parse(trainer.directions) : [])
     }));
+    
+    // Сортируем по имени
+    formattedTrainers.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     
     res.json({ trainers: formattedTrainers });
   } catch (error) {
@@ -33,24 +30,18 @@ router.get('/', authMiddleware, (req, res) => {
 });
 
 // Получить тренера по ID
-router.get('/:id', authMiddleware, (req, res) => {
+router.get('/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     
-    const stmt = db.prepare(`
-      SELECT id, name, last_name, phone, email, directions, bio, is_active
-      FROM trainers
-      WHERE id = ?
-    `);
-    
-    const trainer = stmt.get(id);
+    const trainer = await dbAdapter.get('trainers', { id: parseInt(id) });
     
     if (!trainer) {
       return res.status(404).json({ error: 'Тренер не найден' });
     }
     
-    // Парсим JSON поля
-    trainer.directions = trainer.directions ? JSON.parse(trainer.directions) : [];
+    // Форматируем данные (в Supabase JSON поля уже распарсены)
+    trainer.directions = Array.isArray(trainer.directions) ? trainer.directions : (trainer.directions ? JSON.parse(trainer.directions) : []);
     
     res.json(trainer);
   } catch (error) {

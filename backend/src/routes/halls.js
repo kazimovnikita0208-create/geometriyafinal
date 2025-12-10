@@ -1,25 +1,28 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../config/database');
+const dbAdapter = require('../config/database-adapter');
 const { optionalAuthMiddleware } = require('../middleware/auth');
 
 /**
  * GET /api/halls
  * Получить список всех активных залов
  */
-router.get('/', optionalAuthMiddleware, (req, res) => {
+router.get('/', optionalAuthMiddleware, async (req, res) => {
   try {
-    const halls = db.prepare('SELECT * FROM halls WHERE is_active = 1 ORDER BY id ASC').all();
+    const halls = await dbAdapter.select('halls', { is_active: true });
 
     const formattedHalls = halls.map(hall => ({
       id: hall.id,
       name: hall.name,
       address: hall.address,
       capacity: hall.capacity,
-      hasPoles: hall.has_poles === 1,
+      hasPoles: hall.has_poles === true || hall.has_poles === 1,
       poleCount: hall.pole_count,
       pricePerHour: hall.price_per_hour
     }));
+
+    // Сортируем по id
+    formattedHalls.sort((a, b) => a.id - b.id);
 
     res.json({ halls: formattedHalls });
   } catch (error) {
@@ -35,7 +38,7 @@ router.get('/', optionalAuthMiddleware, (req, res) => {
  * GET /api/halls/:id
  * Получить один зал по ID
  */
-router.get('/:id', optionalAuthMiddleware, (req, res) => {
+router.get('/:id', optionalAuthMiddleware, async (req, res) => {
   try {
     const hallId = parseInt(req.params.id);
 
@@ -46,7 +49,7 @@ router.get('/:id', optionalAuthMiddleware, (req, res) => {
       });
     }
 
-    const hall = db.prepare('SELECT * FROM halls WHERE id = ? AND is_active = 1').get(hallId);
+    const hall = await dbAdapter.get('halls', { id: hallId, is_active: true });
 
     if (!hall) {
       return res.status(404).json({ 
@@ -61,7 +64,7 @@ router.get('/:id', optionalAuthMiddleware, (req, res) => {
         name: hall.name,
         address: hall.address,
         capacity: hall.capacity,
-        hasPoles: hall.has_poles === 1,
+        hasPoles: hall.has_poles === true || hall.has_poles === 1,
         poleCount: hall.pole_count,
         pricePerHour: hall.price_per_hour
       }

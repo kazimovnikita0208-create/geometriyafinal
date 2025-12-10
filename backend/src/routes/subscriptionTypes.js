@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../config/database');
 const dbAdapter = require('../config/database-adapter');
 const { optionalAuthMiddleware } = require('../middleware/auth');
 
@@ -61,10 +60,7 @@ router.get('/:id', optionalAuthMiddleware, (req, res) => {
       });
     }
 
-    const subscriptionType = db.prepare(`
-      SELECT * FROM subscription_types 
-      WHERE id = ? AND is_active = 1
-    `).get(typeId);
+    const subscriptionType = await dbAdapter.get('subscription_types', { id: typeId, is_active: true });
 
     if (!subscriptionType) {
       return res.status(404).json({ 

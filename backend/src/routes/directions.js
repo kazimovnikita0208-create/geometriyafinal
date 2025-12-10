@@ -1,28 +1,31 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../config/database');
+const dbAdapter = require('../config/database-adapter');
 const { optionalAuthMiddleware } = require('../middleware/auth');
 
 /**
  * GET /api/directions
  * Получить список всех активных направлений
  */
-router.get('/', optionalAuthMiddleware, (req, res) => {
+router.get('/', optionalAuthMiddleware, async (req, res) => {
   try {
-    const directions = db.prepare('SELECT * FROM directions WHERE is_active = 1 ORDER BY id ASC').all();
+    const directions = await dbAdapter.select('directions', { is_active: true });
 
-    // Парсим JSON поля
+    // Форматируем данные (в Supabase JSON поля уже распарсены)
     const formattedDirections = directions.map(direction => ({
       id: direction.id,
       name: direction.name,
       slug: direction.slug,
       tagline: direction.tagline,
       description: direction.description,
-      features: direction.features ? JSON.parse(direction.features) : [],
-      levels: direction.levels ? JSON.parse(direction.levels) : [],
+      features: Array.isArray(direction.features) ? direction.features : (direction.features ? JSON.parse(direction.features) : []),
+      levels: Array.isArray(direction.levels) ? direction.levels : (direction.levels ? JSON.parse(direction.levels) : []),
       color: direction.color,
-      requires_pole: direction.requires_pole === 1 // Конвертируем 0/1 в boolean
+      requires_pole: direction.requires_pole === true || direction.requires_pole === 1 // Поддержка обоих форматов
     }));
+
+    // Сортируем по id
+    formattedDirections.sort((a, b) => a.id - b.id);
 
     res.json({ directions: formattedDirections });
   } catch (error) {
@@ -38,11 +41,11 @@ router.get('/', optionalAuthMiddleware, (req, res) => {
  * GET /api/directions/:slug
  * Получить одно направление по slug
  */
-router.get('/:slug', optionalAuthMiddleware, (req, res) => {
+router.get('/:slug', optionalAuthMiddleware, async (req, res) => {
   try {
     const { slug } = req.params;
 
-    const direction = db.prepare('SELECT * FROM directions WHERE slug = ? AND is_active = 1').get(slug);
+    const direction = await dbAdapter.get('directions', { slug, is_active: true });
 
     if (!direction) {
       return res.status(404).json({ 
@@ -51,17 +54,17 @@ router.get('/:slug', optionalAuthMiddleware, (req, res) => {
       });
     }
 
-    // Парсим JSON поля
+    // Форматируем данные (в Supabase JSON поля уже распарсены)
     const formattedDirection = {
       id: direction.id,
       name: direction.name,
       slug: direction.slug,
       tagline: direction.tagline,
       description: direction.description,
-      features: direction.features ? JSON.parse(direction.features) : [],
-      levels: direction.levels ? JSON.parse(direction.levels) : [],
+      features: Array.isArray(direction.features) ? direction.features : (direction.features ? JSON.parse(direction.features) : []),
+      levels: Array.isArray(direction.levels) ? direction.levels : (direction.levels ? JSON.parse(direction.levels) : []),
       color: direction.color,
-      requires_pole: direction.requires_pole === 1 // Конвертируем 0/1 в boolean
+      requires_pole: direction.requires_pole === true || direction.requires_pole === 1 // Поддержка обоих форматов
     };
 
     res.json({ direction: formattedDirection });
