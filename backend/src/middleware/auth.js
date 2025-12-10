@@ -227,22 +227,22 @@ async function optionalAuthMiddleware(req, res, next) {
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       // Токена нет - продолжаем без авторизации
-    return next();
-  }
-  
+      return next();
+    }
+    
     const token = authHeader.substring(7);
     const decoded = verifyToken(token);
     
     if (decoded) {
-      const user = db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.id);
+      const user = await dbAdapter.get('users', { id: decoded.id });
 
-      if (user && user.is_active === 1) {
+      if (user && (user.is_active === 1 || user.is_active === true)) {
         req.user = user;
         req.userId = user.id;
       }
-  }
-  
-  next();
+    }
+    
+    next();
   } catch (error) {
     // Игнорируем ошибки и продолжаем без авторизации
     next();
