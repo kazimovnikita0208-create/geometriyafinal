@@ -133,16 +133,16 @@ const authRoutes = require('./routes/auth');
 const directionsRoutes = require('./routes/directions');
 const hallsRoutes = require('./routes/halls');
 const subscriptionTypesRoutes = require('./routes/subscriptionTypes');
-// ВРЕМЕННО ОТКЛЮЧЕНО: subscriptions.js требует полной переработки для Supabase
+// ВРЕМЕННО ОТКЛЮЧЕНО: требуют переработки для Supabase (содержат db.prepare())
 // const subscriptionsRoutes = require('./routes/subscriptions');
-const lessonsRoutes = require('./routes/lessons');
-const trainersRoutes = require('./routes/trainers');
-const bookingsRoutes = require('./routes/bookings');
-const recurringLessonsRoutes = require('./routes/recurringLessons');
-const statsRoutes = require('./routes/stats');
-const rentalRoutes = require('./routes/rental');
-const pricesRoutes = require('./routes/prices');
-const notificationsRoutes = require('./routes/notifications');
+// const lessonsRoutes = require('./routes/lessons');
+// const trainersRoutes = require('./routes/trainers');
+// const bookingsRoutes = require('./routes/bookings');
+// const recurringLessonsRoutes = require('./routes/recurringLessons');
+// const statsRoutes = require('./routes/stats');
+// const rentalRoutes = require('./routes/rental');
+// const pricesRoutes = require('./routes/prices');
+// const notificationsRoutes = require('./routes/notifications');
 // const profileRoutes = require('./routes/profile');
 // const adminRoutes = require('./routes/admin');
 
@@ -150,16 +150,16 @@ app.use('/api/auth', authRoutes);
 app.use('/api/directions', directionsRoutes);
 app.use('/api/halls', hallsRoutes);
 app.use('/api/subscription-types', subscriptionTypesRoutes);
-// ВРЕМЕННО ОТКЛЮЧЕНО: subscriptions.js требует полной переработки для Supabase
+// ВРЕМЕННО ОТКЛЮЧЕНО: требуют переработки для Supabase (содержат db.prepare())
 // app.use('/api/subscriptions', subscriptionsRoutes);
-app.use('/api/lessons', lessonsRoutes);
-app.use('/api/trainers', trainersRoutes);
-app.use('/api/bookings', bookingsRoutes);
-app.use('/api/recurring-lessons', recurringLessonsRoutes);
-app.use('/api/stats', statsRoutes);
-app.use('/api/rental', rentalRoutes);
-app.use('/api/prices', pricesRoutes);
-app.use('/api/notifications', notificationsRoutes);
+// app.use('/api/lessons', lessonsRoutes);
+// app.use('/api/trainers', trainersRoutes);
+// app.use('/api/bookings', bookingsRoutes);
+// app.use('/api/recurring-lessons', recurringLessonsRoutes);
+// app.use('/api/stats', statsRoutes);
+// app.use('/api/rental', rentalRoutes);
+// app.use('/api/prices', pricesRoutes);
+// app.use('/api/notifications', notificationsRoutes);
 // app.use('/api/rental', rentalRoutes);
 // app.use('/api/profile', profileRoutes);
 // app.use('/api/admin', adminRoutes);
